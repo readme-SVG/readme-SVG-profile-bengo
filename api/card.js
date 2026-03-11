@@ -1,6 +1,8 @@
+// ── dimensions ──────────────────────────────
 const W = 495, H = 195;
 
-const LANG_COLORS = {
+// ── language colours ────────────────────────
+const LC = {
   JavaScript:'#f7df1e',TypeScript:'#3178c6',Python:'#3572A5',Go:'#00add8',
   Rust:'#dea584',C:'#555555','C++':'#f34b7d',Ruby:'#701516',Java:'#b07219',
   PHP:'#4F5D95',Swift:'#f05138',Kotlin:'#A97BFF',Shell:'#89e051',
@@ -8,509 +10,465 @@ const LANG_COLORS = {
   Scala:'#c22d40',Elixir:'#6e4a7e',Haskell:'#5e5086',Lua:'#000080',R:'#198CE7',
   Nix:'#7e7eff',Dockerfile:'#384d54',
 };
-function lc(l) { return LANG_COLORS[l] || '#888'; }
+const lc = l => LC[l] || '#8b949e';
 
+// ── GitHub dark palette ──────────────────────
+const GH = {
+  text:   '#e6edf3', sec:    '#8b949e', mut:    '#6e7681',
+  border: '#30363d', card:   'rgba(22,27,34,0.85)', canvas: '#0d1117',
+  blue:   '#58a6ff', green:  '#3fb950', yellow: '#d29922',
+  orange: '#db6d28', red:    '#f85149', purple: '#bc8cff', pink:   '#ff7b72',
+};
+
+// ── helpers ──────────────────────────────────
 function esc(s) {
-  return String(s == null ? '' : s)
+  return String(s==null?'':s)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;')
     .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
-function shuffle(arr) {
-  const a = [...arr];
-  for (let i = a.length-1; i > 0; i--) {
-    const j = (Math.random()*(i+1))|0;
-    const t = a[i]; a[i]=a[j]; a[j]=t;
-  }
-  return a;
+function shuffle(a) {
+  const b=[...a];
+  for(let i=b.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[b[i],b[j]]=[b[j],b[i]];}
+  return b;
 }
-function timeAgo(iso) {
-  const s = Math.floor((Date.now()-new Date(iso))/1000);
-  if (s < 3600)  return Math.floor(s/60)+'m ago';
-  if (s < 86400) return Math.floor(s/3600)+'h ago';
-  return Math.floor(s/86400)+'d ago';
+function ago(iso) {
+  if (!iso) return '?';
+  const s=Math.floor((Date.now()-new Date(iso))/1000);
+  if(s<3600)  return Math.floor(s/60)+'m ago';
+  if(s<86400) return Math.floor(s/3600)+'h ago';
+  if(s<86400*30) return Math.floor(s/86400)+'d ago';
+  if(s<86400*365) return Math.floor(s/86400/30)+'mo ago';
+  return Math.floor(s/86400/365)+'y ago';
 }
-function wrap(text, maxChars) {
-  const words = String(text).split(' ');
-  const lines = [];
-  let cur = '';
-  for (const w of words) {
-    const test = cur ? cur+' '+w : w;
-    if (test.length > maxChars) { if (cur) lines.push(cur); cur = w; }
-    else cur = test;
+function fmt(n) {
+  if(n>=1e6) return (n/1e6).toFixed(1)+'M';
+  if(n>=1e3) return (n/1e3).toFixed(1)+'k';
+  return String(n);
+}
+function wrap(text,max) {
+  const words=String(text||'').split(' '),lines=[];let cur='';
+  for(const w of words){
+    const t=cur?cur+' '+w:w;
+    if(t.length>max){if(cur)lines.push(cur);cur=w;}else cur=t;
   }
-  if (cur) lines.push(cur);
+  if(cur)lines.push(cur);
   return lines;
 }
 
-async function fetchGH(url, token) {
-  const headers = { 'Accept':'application/vnd.github+json','User-Agent':'gh-card/2.0' };
-  if (token) headers['Authorization'] = 'Bearer '+token;
-  const r = await fetch(url, { headers });
-  if (!r.ok) throw new Error('GitHub '+r.status+' — '+url.split('/').slice(-2).join('/'));
+// ── SVG text helpers ──────────────────────────
+const SANS = "-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif";
+const MONO = "ui-monospace,'SFMono-Regular','SF Mono',Menlo,Consolas,monospace";
+function T(x,y,s,sz,fill,fw,an) {
+  return `<text x="${x}" y="${y}" font-family="${SANS}" font-size="${sz||13}" fill="${esc(fill||GH.text)}" font-weight="${fw||400}" text-anchor="${an||'start'}">${esc(s)}</text>`;
+}
+function TM(x,y,s,sz,fill,fw,an) {
+  return `<text x="${x}" y="${y}" font-family="${MONO}" font-size="${sz||11}" fill="${esc(fill||GH.text)}" font-weight="${fw||400}" text-anchor="${an||'start'}">${esc(s)}</text>`;
+}
+
+// ── root SVG — transparent background ────────
+function svg(inner) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${inner}</svg>`;
+}
+
+// ── fetch helper ─────────────────────────────
+async function gh(url, token) {
+  const headers={'Accept':'application/vnd.github+json','User-Agent':'gh-card/3'};
+  if(token) headers['Authorization']='Bearer '+token;
+  const r=await fetch(url,{headers});
+  if(!r.ok) throw new Error('GitHub '+r.status+' ('+url.split('/').slice(-2).join('/')+')');
   return r.json();
 }
 
-// ── shared SVG text helper ──
-function T(x,y,s,sz,fill,fw,anchor) {
-  return `<text x="${x}" y="${y}" font-family="ui-monospace,Menlo,monospace" `
-    +`font-size="${sz||10}" fill="${esc(fill||'#e8e8f0')}" `
-    +`font-weight="${fw||400}" text-anchor="${anchor||'start'}">${esc(s)}</text>`;
-}
-
-// ── root SVG wrapper — just background, no chrome ──
-function svg(inner, theme) {
-  const dark = theme !== 'light';
-  const bg   = dark ? '#0d0d14' : '#f6f8fa';
-  const brd  = dark ? 'rgba(255,255,255,.09)' : '#d0d7de';
-  return `<svg xmlns="http://www.w3.org/2000/svg" `
-    +`width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`
-    +`<rect width="${W}" height="${H}" rx="12" fill="${bg}" stroke="${brd}" stroke-width="1"/>`
-    +inner
-    +`</svg>`;
-}
-
 // ════════════════════════════════════════════
-//  SLIDES  — each returns full SVG string
+//  SLIDES
 // ════════════════════════════════════════════
 
-// ── 1. Bio ──
-function slideBio(user, theme) {
-  const dark = theme !== 'light';
-  const col  = dark ? '#e8e8f0' : '#1a1a2e';
-  const mut  = dark ? '#6b6b80' : '#57606a';
-  const ac1  = '#7c6af7';
-  const ac2  = '#2dd4bf';
-
-  let o = '';
-  o += `<defs><clipPath id="av"><circle cx="56" cy="97" r="42"/></clipPath></defs>`;
-  o += `<image href="${esc(user.avatar_url)}&amp;s=168" x="14" y="55" width="84" height="84" clip-path="url(#av)"/>`;
-  o += `<circle cx="56" cy="97" r="42" fill="none" stroke="${ac1}" stroke-width="1.5" opacity="0.3"/>`;
-
-  const tx = 112;
-  o += T(tx, 68, (user.name||user.login).slice(0,22), 17, col, 800);
-  if (user.bio) {
-    const lines = wrap(user.bio, 38);
-    lines.slice(0,3).forEach((l,i) => o += T(tx, 88+i*16, l, 9.5, mut));
-  }
-  const detailY = user.bio ? 88 + Math.min(wrap(user.bio,38).length,3)*16 + 6 : 90;
-  if (user.location) o += T(tx, detailY,    '◎ '+user.location.slice(0,30), 9, ac2);
-  if (user.company)  o += T(tx, detailY+15, user.company.slice(0,30),        8, mut);
-
-  return svg(o, theme);
+// ── big number stat ──
+function slideStat(value, label, color) {
+  const cx=W/2, cy=H/2-12;
+  let o='';
+  o+=`<circle cx="${cx}" cy="${cy}" r="78" fill="${color}" opacity="0.04"/>`;
+  o+=`<circle cx="${cx}" cy="${cy}" r="50" fill="${color}" opacity="0.05"/>`;
+  o+=T(cx,cy+14,fmt(value),60,GH.text,700,'middle');
+  o+=T(cx,cy+36,label,13,color,600,'middle');
+  return svg(o);
 }
 
-// ── 2. Single stat — repos ──
-function slideStatRepos(user, theme) {
-  const dark = theme !== 'light';
-  const col  = dark ? '#e8e8f0' : '#1a1a2e';
-  const mut  = dark ? '#6b6b80' : '#57606a';
-  const cx = W/2;
-
-  let o = '';
-  o += `<circle cx="${cx}" cy="97" r="68" fill="#7c6af7" opacity="0.06"/>`;
-  o += `<circle cx="${cx}" cy="97" r="44" fill="#7c6af7" opacity="0.05"/>`;
-  o += T(cx, 88, String(user.public_repos), 56, col, 800, 'middle');
-  o += T(cx, 118, 'public repositories', 11, '#7c6af7', 600, 'middle');
-
-  return svg(o, theme);
-}
-
-// ── 3. Single stat — stars ──
-function slideStatStars(repos, theme) {
-  const dark = theme !== 'light';
-  const col  = dark ? '#e8e8f0' : '#1a1a2e';
-  const total = repos.reduce((s,r)=>s+r.stargazers_count,0);
-  const cx = W/2;
-
-  let o = '';
-  o += `<circle cx="${cx}" cy="97" r="68" fill="#fbbf24" opacity="0.06"/>`;
-  o += `<circle cx="${cx}" cy="97" r="44" fill="#fbbf24" opacity="0.05"/>`;
-  o += T(cx, 88, String(total), 56, col, 800, 'middle');
-  o += T(cx, 118, 'total stars earned', 11, '#fbbf24', 600, 'middle');
-
-  return svg(o, theme);
-}
-
-// ── 4. Single stat — followers ──
-function slideStatFollowers(user, theme) {
-  const dark = theme !== 'light';
-  const col  = dark ? '#e8e8f0' : '#1a1a2e';
-  const cx = W/2;
-
-  let o = '';
-  o += `<circle cx="${cx}" cy="97" r="68" fill="#2dd4bf" opacity="0.06"/>`;
-  o += `<circle cx="${cx}" cy="97" r="44" fill="#2dd4bf" opacity="0.05"/>`;
-  o += T(cx, 88, String(user.followers), 56, col, 800, 'middle');
-  o += T(cx, 118, 'followers', 11, '#2dd4bf', 600, 'middle');
-
-  return svg(o, theme);
-}
-
-// ── 5. Single stat — following ──
-function slideStatFollowing(user, theme) {
-  const dark = theme !== 'light';
-  const col  = dark ? '#e8e8f0' : '#1a1a2e';
-  const cx = W/2;
-
-  let o = '';
-  o += `<circle cx="${cx}" cy="97" r="68" fill="#f472b6" opacity="0.06"/>`;
-  o += `<circle cx="${cx}" cy="97" r="44" fill="#f472b6" opacity="0.05"/>`;
-  o += T(cx, 88, String(user.following), 56, col, 800, 'middle');
-  o += T(cx, 118, 'following', 11, '#f472b6', 600, 'middle');
-
-  return svg(o, theme);
-}
-
-// ── 6. Language bar ──
-function slideLangBar(repos, theme) {
-  const dark = theme !== 'light';
-  const col  = dark ? '#e8e8f0' : '#1a1a2e';
-  const mut  = dark ? '#6b6b80' : '#57606a';
-  const bg3  = dark ? '#1e1e2e' : '#eaeef2';
-
-  const langMap = {};
-  repos.forEach(r => { if(r.language) langMap[r.language]=(langMap[r.language]||0)+1; });
-  const langs  = Object.entries(langMap).sort((a,b)=>b[1]-a[1]).slice(0,6);
-  const totalL = langs.reduce((s,[,v])=>s+v,0)||1;
-
-  let o = '';
-  const bx=20, by=28, bw=W-40, bh=18;
-  o += `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="9" fill="${bg3}"/>`;
-  let off = bx;
-  langs.forEach(([l,n],i) => {
-    const w = (n/totalL)*bw;
-    const r0 = i===0?9:0, r1 = i===langs.length-1?9:0;
-    o += `<rect x="${off.toFixed(1)}" y="${by}" width="${w.toFixed(1)}" height="${bh}" `
-      +`rx="${r0}" fill="${lc(l)}"/>`;
-    off += w;
+// ── language bar + legend ──
+function slideLangBar(repos) {
+  const map={};
+  repos.forEach(r=>{if(r.language)map[r.language]=(map[r.language]||0)+1;});
+  const langs=Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const tot=langs.reduce((s,[,v])=>s+v,0)||1;
+  let o='';
+  const bx=16,by=14,bw=W-32,bh=10;
+  o+=`<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="5" fill="${GH.border}"/>`;
+  let off=bx;
+  langs.forEach(([l,n],i)=>{
+    const w=Math.max((n/tot)*bw,2);
+    o+=`<rect x="${off.toFixed(1)}" y="${by}" width="${w.toFixed(1)}" height="${bh}" rx="${i===0?5:0}" fill="${lc(l)}"/>`;
+    off+=w;
   });
-
-  // legend: 2 columns
-  langs.forEach(([l,n],i) => {
-    const col2 = i<3 ? 0 : 1;
-    const row  = i<3 ? i : i-3;
-    const lx = 20  + col2*240;
-    const ly = 64  + row*38;
-    o += `<circle cx="${lx+8}" cy="${ly+8}" r="7" fill="${lc(l)}"/>`;
-    o += T(lx+22, ly+12, l, 12, col, 600);
-    o += T(lx+22, ly+26, ((n/totalL)*100).toFixed(1)+'%  ·  '+n+' repos', 9, mut);
+  langs.forEach(([l,n],i)=>{
+    const col=i<3?0:1, row=i<3?i:i-3;
+    const lx=16+col*246, ly=42+row*46;
+    o+=`<circle cx="${lx+7}" cy="${ly+9}" r="7" fill="${lc(l)}"/>`;
+    o+=T(lx+20,ly+13,l,13,GH.text,600);
+    o+=T(lx+20,ly+29,((n/tot)*100).toFixed(1)+'%  ·  '+n+' repos',11,GH.sec);
   });
-
-  return svg(o, theme);
+  return svg(o);
 }
 
-// ── 7. Top-3 repos ──
-function slideTopRepos(repos, theme) {
-  const dark = theme !== 'light';
-  const col  = dark ? '#e8e8f0' : '#1a1a2e';
-  const mut  = dark ? '#6b6b80' : '#57606a';
-  const bg3  = dark ? '#13131d' : '#ffffff';
-  const brd  = dark ? 'rgba(255,255,255,.07)' : '#e1e4e8';
-  const ac1  = '#7c6af7';
-  const gold = '#fbbf24';
-
-  const top = [...repos].sort((a,b)=>b.stargazers_count-a.stargazers_count).slice(0,3);
-  let o = '';
-
-  top.forEach((r,i) => {
-    const ry = 10 + i*58;
-    o += `<rect x="10" y="${ry}" width="${W-20}" height="50" rx="8" fill="${bg3}" stroke="${brd}" stroke-width="1"/>`;
-    o += `<rect x="10" y="${ry}" width="4" height="50" rx="2" fill="${ac1}" opacity="${0.9-i*0.25}"/>`;
-    o += T(24, ry+18, r.name.slice(0,30), 12, ac1, 600);
-    o += T(W-14, ry+18, '★ '+r.stargazers_count, 11, gold, 600, 'end');
-    o += T(24, ry+34, (r.description||'').slice(0,52), 8.5, mut);
-    if (r.language) {
-      o += `<circle cx="${W-60}" cy="${ry+30}" r="4" fill="${lc(r.language)}"/>`;
-      o += T(W-52, ry+34, r.language, 8, mut, 400, 'start');
+// ── top repos by stars ──
+function slideTopRepos(repos) {
+  const top=[...repos].sort((a,b)=>b.stargazers_count-a.stargazers_count).slice(0,3);
+  let o='';
+  top.forEach((r,i)=>{
+    const ry=8+i*60;
+    o+=`<rect x="8" y="${ry}" width="${W-16}" height="52" rx="6" fill="${GH.card}" stroke="${GH.border}" stroke-width="1"/>`;
+    o+=`<rect x="8" y="${ry}" width="3" height="52" rx="2" fill="${GH.blue}" opacity="${1-i*0.3}"/>`;
+    o+=T(20,ry+20,r.name.slice(0,32),13,GH.blue,600);
+    o+=T(W-16,ry+20,'★ '+fmt(r.stargazers_count),12,GH.yellow,600,'end');
+    o+=T(20,ry+37,(r.description||'').slice(0,56),11,GH.sec);
+    if(r.language){
+      o+=`<circle cx="${W-52}" cy="${ry+32}" r="5" fill="${lc(r.language)}"/>`;
+      o+=T(W-43,ry+37,r.language.slice(0,12),10,GH.mut);
     }
   });
-
-  return svg(o, theme);
+  return svg(o);
 }
 
-// ── 8. Activity heatmap ──
-function slideHeatmap(events, theme) {
-  const dark = theme !== 'light';
-  const mut  = dark ? '#5a5a70' : '#8b949e';
-  const bg3  = dark ? '#1e1e2e' : '#eaeef2';
-
-  const counts = {};
-  events.forEach(e => {
-    const d = e.created_at ? e.created_at.slice(0,10) : null;
-    if (d) counts[d]=(counts[d]||0)+1;
+// ── activity heatmap — GitHub-accurate layout ──
+function slideHeatmap(events) {
+  const counts={};
+  events.forEach(e=>{
+    const d=e.created_at?e.created_at.slice(0,10):null;
+    if(d) counts[d]=(counts[d]||0)+1;
   });
-  function hc(n) {
-    if (!n) return bg3;
-    if (n<=1) return '#312a8a';
-    if (n<=3) return '#5048c8';
-    if (n<=6) return '#7c6af7';
-    return '#a99cf9';
+  function hc(n){
+    if(!n)     return GH.border;
+    if(n<=1)   return '#0e4429';
+    if(n<=3)   return '#006d32';
+    if(n<=6)   return '#26a641';
+    return '#39d353';
   }
 
+  // fit 26 cols × 7 rows into W=495, H=195
+  // reserve bottom 26px for legend → grid height = 169
+  // cell_h = floor((169 - 6*gap) / 7), gap=3 → (169-18)/7 = 21 → use 18
+  // cell_w = floor((W - 2*margin - 25*gap) / 26), margin=10, gap=2
   const WEEKS=26, DAYS=7;
-  const cw=14, ch=10, gx=3, gy=3;
-  const totalW = WEEKS*(cw+gx)-gx;
-  const sx = Math.floor((W-totalW)/2);
-  const sy = 18;
+  const marginX=10, legendH=26;
+  const gapX=2, gapY=3;
+  const cw=Math.floor((W-2*marginX-(WEEKS-1)*gapX)/WEEKS);   // ≈17
+  const ch=Math.floor((H-legendH-(DAYS-1)*gapY)/DAYS);        // ≈22
+  const gridW=WEEKS*cw+(WEEKS-1)*gapX;
+  const gridH=DAYS*ch+(DAYS-1)*gapY;
+  const sx=Math.floor((W-gridW)/2);
+  const sy=4;
 
-  let o = '';
-  const now = new Date();
-  for (let w=0; w<WEEKS; w++) {
-    for (let d=0; d<DAYS; d++) {
-      const dt = new Date(now);
+  let o='';
+  const now=new Date();
+  for(let w=0;w<WEEKS;w++){
+    for(let d=0;d<DAYS;d++){
+      const dt=new Date(now);
       dt.setDate(dt.getDate()-((WEEKS-1-w)*7+(DAYS-1-d)));
-      const n = counts[dt.toISOString().slice(0,10)]||0;
-      o += `<rect x="${sx+w*(cw+gx)}" y="${sy+d*(ch+gy)}" width="${cw}" height="${ch}" rx="2.5" fill="${hc(n)}"/>`;
+      const key=dt.toISOString().slice(0,10);
+      const n=counts[key]||0;
+      o+=`<rect x="${sx+w*(cw+gapX)}" y="${sy+d*(ch+gapY)}" width="${cw}" height="${ch}" rx="2" fill="${hc(n)}"/>`;
     }
   }
 
-  const ly = sy + DAYS*(ch+gy) + 10;
-  o += T(sx, ly+9, 'less', 8, mut);
-  [0,1,3,5,8].forEach((n,i) => {
-    o += `<rect x="${sx+32+i*18}" y="${ly}" width="${cw}" height="${ch}" rx="2.5" fill="${hc(n)}"/>`;
+  // legend
+  const ly=sy+gridH+8;
+  o+=T(sx,ly+11,'less',10,GH.mut);
+  [0,1,3,5,8].forEach((n,i)=>{
+    o+=`<rect x="${sx+34+i*(cw+2)}" y="${ly}" width="${cw}" height="${Math.min(ch,14)}" rx="2" fill="${hc(n)}"/>`;
   });
-  o += T(sx+32+5*18+4, ly+9, 'more', 8, mut);
+  o+=T(sx+34+5*(cw+2)+4,ly+11,'more',10,GH.mut);
+  const days=Object.keys(counts).length;
+  o+=T(W-sx,ly+11,days+' active days',10,GH.mut,400,'end');
 
-  const total = events.length;
-  const days  = Object.keys(counts).length;
-  o += T(W-sx, ly+9, total+' events · '+days+' active days', 8, mut, 400, 'end');
-
-  return svg(o, theme);
+  return svg(o);
 }
 
-// ── 9. Two random commits ──
-function slideCommits(events, theme) {
-  const dark = theme !== 'light';
-  const col  = dark ? '#e8e8f0' : '#1a1a2e';
-  const mut  = dark ? '#6b6b80' : '#57606a';
-  const bg3  = dark ? '#13131d' : '#ffffff';
-  const brd  = dark ? 'rgba(255,255,255,.07)' : '#e1e4e8';
-  const ac3  = '#f472b6';
+// ── 2 random commits — fetched from commits API ──
+function slideCommits(commits) {
+  const picks=shuffle(commits).slice(0,2);
+  let o='';
 
-  const all = [];
-  events.forEach(e => {
-    if (e.type==='PushEvent' && e.payload && e.payload.commits) {
-      e.payload.commits.forEach(c => all.push({
-        sha:  (c.sha||'???????').slice(0,7),
-        msg:  (c.message||'').split('\n')[0],
-        repo: e.repo && e.repo.name ? e.repo.name.split('/').pop() : '?',
-        time: e.created_at,
-      }));
-    }
-  });
-
-  const picks = shuffle(all).slice(0,2);
-  let o = '';
-
-  if (!picks.length) {
-    o += T(W/2, H/2, 'no recent push events', 11, mut, 400, 'middle');
-    return svg(o, theme);
+  if(!picks.length){
+    o+=T(W/2,H/2-8,'no public commits found',13,GH.sec,400,'middle');
+    o+=T(W/2,H/2+12,'activity may be in private repos',11,GH.mut,400,'middle');
+    return svg(o);
   }
 
-  picks.forEach((c,i) => {
-    const cy = 12 + i*88;
-    o += `<rect x="10" y="${cy}" width="${W-20}" height="80" rx="8" fill="${bg3}" stroke="${brd}" stroke-width="1"/>`;
-    // sha badge
-    o += `<rect x="18" y="${cy+10}" width="56" height="16" rx="5" fill="${ac3}" opacity="0.15"/>`;
-    o += T(21, cy+22, c.sha, 9, ac3, 600);
-    o += T(82, cy+22, c.repo.slice(0,28), 9, mut);
-    o += T(W-16, cy+22, timeAgo(c.time), 8, mut, 400, 'end');
-    // message
-    const lines = wrap(c.msg, 58);
-    lines.slice(0,2).forEach((l,li) => o += T(18, cy+42+li*16, l, 10.5, col));
+  picks.forEach((c,i)=>{
+    const ry=8+i*90;
+    o+=`<rect x="8" y="${ry}" width="${W-16}" height="82" rx="6" fill="${GH.card}" stroke="${GH.border}" stroke-width="1"/>`;
+    // sha pill
+    o+=`<rect x="14" y="${ry+10}" width="62" height="18" rx="5" fill="rgba(188,140,255,.12)" stroke="${GH.purple}" stroke-width="0.5"/>`;
+    o+=TM(18,ry+23,c.sha,10,GH.purple,600);
+    o+=T(84,ry+23,c.repo.slice(0,22),11,GH.sec);
+    o+=T(W-14,ry+23,ago(c.time),10,GH.mut,400,'end');
+    const lines=wrap(c.msg,60);
+    lines.slice(0,2).forEach((l,li)=>o+=T(14,ry+44+li*18,l,12,GH.text));
   });
-
-  return svg(o, theme);
+  return svg(o);
 }
 
-// ── 10. Two recent events ──
-function slideEvents(events, theme) {
-  const dark = theme !== 'light';
-  const col  = dark ? '#e8e8f0' : '#1a1a2e';
-  const mut  = dark ? '#6b6b80' : '#57606a';
-  const bg3  = dark ? '#13131d' : '#ffffff';
-  const brd  = dark ? 'rgba(255,255,255,.07)' : '#e1e4e8';
-  const ac1  = '#7c6af7';
-
-  const icons = {
-    PushEvent:'◈',CreateEvent:'✦',WatchEvent:'★',ForkEvent:'⑂',
-    IssuesEvent:'◎',PullRequestEvent:'⇄',IssueCommentEvent:'◉',
-    ReleaseEvent:'◆',DeleteEvent:'✕',
+// ── 2 recent events ──
+function slideEvents(events) {
+  const iconFor={
+    PushEvent:'↑',CreateEvent:'+',WatchEvent:'★',ForkEvent:'⑂',
+    IssuesEvent:'●',PullRequestEvent:'⇄',IssueCommentEvent:'◉',
+    ReleaseEvent:'◆',DeleteEvent:'−',MemberEvent:'○',
   };
-  function desc(e) {
-    const r = e.repo && e.repo.name ? e.repo.name.split('/').pop() : '';
-    const p = e.payload||{};
-    switch(e.type) {
-      case 'PushEvent':         return ['pushed '+(p.commits?p.commits.length:0)+' commit(s)', r];
-      case 'CreateEvent':       return ['created '+(p.ref_type||'ref'), p.ref||r];
-      case 'WatchEvent':        return ['starred', r];
-      case 'ForkEvent':         return ['forked', r];
-      case 'IssuesEvent':       return [(p.action||'opened')+' issue', r];
-      case 'PullRequestEvent':  return [(p.action||'opened')+' pull request', r];
-      case 'IssueCommentEvent': return ['commented', r];
-      case 'ReleaseEvent':      return ['released '+(p.release&&p.release.tag_name||''), r];
-      default:                  return [e.type.replace('Event',''), r];
+  const colorFor={
+    PushEvent:GH.blue,CreateEvent:GH.green,WatchEvent:GH.yellow,
+    ForkEvent:GH.purple,IssuesEvent:GH.red,PullRequestEvent:GH.green,
+    IssueCommentEvent:GH.blue,ReleaseEvent:GH.orange,DeleteEvent:GH.red,
+  };
+  function desc(e){
+    const repo=e.repo&&e.repo.name?e.repo.name:'';
+    const short=repo.split('/').pop();
+    const p=e.payload||{};
+    switch(e.type){
+      case 'PushEvent':         return ['pushed '+(p.commits&&p.commits.length||0)+' commit(s)',repo];
+      case 'CreateEvent':       return ['created '+(p.ref_type||'ref'),p.ref||short];
+      case 'WatchEvent':        return ['starred',repo];
+      case 'ForkEvent':         return ['forked',repo];
+      case 'IssuesEvent':       return [(p.action||'opened')+' issue',repo];
+      case 'PullRequestEvent':  return [(p.action||'opened')+' PR',repo];
+      case 'IssueCommentEvent': return ['commented on issue',repo];
+      case 'ReleaseEvent':      return ['released '+(p.release&&p.release.tag_name||''),short];
+      default:                  return [e.type.replace('Event',''),repo];
     }
   }
-
-  const picks = events.slice(0,2);
-  let o = '';
-
-  picks.forEach((e,i) => {
-    const ey = 12 + i*88;
-    o += `<rect x="10" y="${ey}" width="${W-20}" height="80" rx="8" fill="${bg3}" stroke="${brd}" stroke-width="1"/>`;
-    o += `<circle cx="46" cy="${ey+40}" r="20" fill="${ac1}" opacity="0.08"/>`;
-    o += `<text x="46" y="${ey+47}" font-family="ui-monospace,Menlo,monospace" font-size="18" fill="${ac1}" text-anchor="middle">${icons[e.type]||'◇'}</text>`;
-    const [line1, line2] = desc(e);
-    o += T(76, ey+30, line1.slice(0,42), 13, col, 600);
-    o += T(76, ey+50, line2.slice(0,42), 11, ac1);
-    o += T(76, ey+66, timeAgo(e.created_at), 9, mut);
+  const picks=events.slice(0,2);
+  let o='';
+  picks.forEach((e,i)=>{
+    const ry=8+i*90;
+    const col=colorFor[e.type]||GH.sec;
+    o+=`<rect x="8" y="${ry}" width="${W-16}" height="82" rx="6" fill="${GH.card}" stroke="${GH.border}" stroke-width="1"/>`;
+    // icon circle
+    o+=`<circle cx="38" cy="${ry+41}" r="20" fill="${col}" opacity="0.1"/>`;
+    o+=`<text x="38" y="${ry+48}" font-family="${SANS}" font-size="18" fill="${col}" text-anchor="middle" font-weight="600">${iconFor[e.type]||'◇'}</text>`;
+    const [line1,line2]=desc(e);
+    o+=T(68,ry+28,line1.slice(0,42),13,GH.text,600);
+    o+=T(68,ry+46,line2.slice(0,42),11,GH.blue);
+    o+=T(68,ry+63,ago(e.created_at),10,GH.mut);
+    o+=T(W-14,ry+28,e.type.replace('Event',''),10,GH.mut,400,'end');
   });
-
-  return svg(o, theme);
+  return svg(o);
 }
 
-// ── 11. Spotlight repo ──
-function slideSpotlight(repos, theme) {
-  const dark = theme !== 'light';
-  const col  = dark ? '#e8e8f0' : '#1a1a2e';
-  const mut  = dark ? '#6b6b80' : '#57606a';
-  const bg3  = dark ? '#1e1e2e' : '#eaeef2';
-  const ac1  = '#7c6af7';
-  const ac2  = '#2dd4bf';
-  const gold = '#fbbf24';
-
-  const r = shuffle(repos.filter(x => !x.fork && x.description))[0];
-  if (!r) {
-    return svg(T(W/2,H/2,'no repos with descriptions',11,mut,400,'middle'), theme);
+// ── spotlight repo ──
+function slideSpotlight(repos) {
+  const r=shuffle(repos.filter(x=>!x.fork&&x.description))[0];
+  if(!r) return svg(T(W/2,H/2,'no repos with descriptions',13,GH.sec,400,'middle'));
+  let o='';
+  o+=T(16,36,r.name.slice(0,32),18,GH.blue,700);
+  const lines=wrap(r.description,56);
+  lines.slice(0,3).forEach((l,i)=>o+=T(16,58+i*17,l,11,GH.sec));
+  const sy=58+Math.min(lines.length,3)*17+10;
+  o+=T(16,   sy,'★ '+fmt(r.stargazers_count),13,GH.yellow,600);
+  o+=T(90,   sy,'⑂ '+fmt(r.forks_count),     13,GH.purple,600);
+  if(r.open_issues_count!==undefined) o+=T(160,sy,'● '+r.open_issues_count,13,GH.sec,600);
+  if(r.language){
+    o+=`<circle cx="17" cy="${sy+16}" r="6" fill="${lc(r.language)}"/>`;
+    o+=T(28,sy+20,r.language,11,GH.sec);
   }
-
-  let o = '';
-  o += T(20, 38, r.name.slice(0,32), 18, ac1, 800);
-
-  const lines = wrap(r.description, 55);
-  lines.slice(0,3).forEach((l,i) => o += T(20, 62+i*16, l, 10, mut));
-
-  const sy = 62 + Math.min(lines.length,3)*16 + 12;
-  o += T(20,    sy, '★ '+r.stargazers_count, 12, gold, 700);
-  o += T(90,    sy, '⑂ '+r.forks_count,      12, ac2,  700);
-  if (r.open_issues_count !== undefined)
-    o += T(155, sy, '◎ '+r.open_issues_count, 12, mut,  700);
-
-  if (r.language) {
-    o += `<circle cx="21" cy="${sy+16}" r="6" fill="${lc(r.language)}"/>`;
-    o += T(32, sy+20, r.language, 10, mut);
-  }
-
-  if (r.topics && r.topics.length) {
-    let tx = r.language ? 32+r.language.length*6+18 : 20;
-    r.topics.slice(0,4).forEach(t => {
-      const tw = t.length*5.8+16;
-      if (tx+tw > W-14) return;
-      o += `<rect x="${tx.toFixed(0)}" y="${sy+8}" width="${tw.toFixed(0)}" height="16" rx="5" fill="${bg3}"/>`;
-      o += T(tx+8, sy+20, t.slice(0,12), 8, mut);
-      tx += tw+5;
+  if(r.topics&&r.topics.length){
+    let tx=r.language?28+r.language.length*6+16:16;
+    r.topics.slice(0,4).forEach(t=>{
+      const tw=t.length*5.5+16;
+      if(tx+tw>W-12)return;
+      o+=`<rect x="${tx.toFixed(0)}" y="${sy+8}" width="${tw.toFixed(0)}" height="16" rx="8" fill="rgba(56,139,253,.15)" stroke="${GH.blue}" stroke-width="0.5"/>`;
+      o+=T(tx+8,sy+20,t.slice(0,12),8,GH.blue);
+      tx+=tw+5;
     });
   }
-
-  return svg(o, theme);
+  return svg(o);
 }
 
-// ── 12. Language list with bars ──
-function slideLangList(repos, theme) {
-  const dark = theme !== 'light';
-  const col  = dark ? '#e8e8f0' : '#1a1a2e';
-  const mut  = dark ? '#6b6b80' : '#57606a';
-  const bg3  = dark ? '#1e1e2e' : '#eaeef2';
-
-  const langMap = {};
-  repos.forEach(r => { if(r.language) langMap[r.language]=(langMap[r.language]||0)+1; });
-  const langs  = Object.entries(langMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  const totalL = langs.reduce((s,[,v])=>s+v,0)||1;
-  const maxV   = langs[0]?langs[0][1]:1;
-
-  let o = '';
-  langs.forEach(([l,n],i) => {
-    const ly  = 16 + i*34;
-    const pct = (n/totalL)*100;
-    const bw  = ((n/maxV)*(W-160)).toFixed(1);
-    o += `<circle cx="22" cy="${ly+12}" r="7" fill="${lc(l)}"/>`;
-    o += T(36, ly+16, l, 11, col, 600);
-    o += `<rect x="140" y="${ly+4}" width="${W-158}" height="14" rx="7" fill="${bg3}"/>`;
-    o += `<rect x="140" y="${ly+4}" width="${bw}" height="14" rx="7" fill="${lc(l)}" opacity="0.85"/>`;
-    o += T(W-12, ly+16, pct.toFixed(1)+'%', 9, mut, 500, 'end');
+// ── language list bars ──
+function slideLangList(repos) {
+  const map={};
+  repos.forEach(r=>{if(r.language)map[r.language]=(map[r.language]||0)+1;});
+  const langs=Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const tot=langs.reduce((s,[,v])=>s+v,0)||1;
+  const maxV=langs[0]?langs[0][1]:1;
+  let o='';
+  langs.forEach(([l,n],i)=>{
+    const ly=14+i*34;
+    const pct=(n/tot)*100;
+    const bw=Math.max((n/maxV)*(W-160),4);
+    o+=`<circle cx="22" cy="${ly+12}" r="7" fill="${lc(l)}"/>`;
+    o+=T(36,ly+16,l,12,GH.text,600);
+    o+=`<rect x="138" y="${ly+5}" width="${(W-155).toFixed(0)}" height="14" rx="7" fill="${GH.border}"/>`;
+    o+=`<rect x="138" y="${ly+5}" width="${bw.toFixed(1)}" height="14" rx="7" fill="${lc(l)}" opacity="0.85"/>`;
+    o+=T(W-14,ly+16,pct.toFixed(1)+'%',11,GH.sec,500,'end');
   });
+  return svg(o);
+}
 
-  return svg(o, theme);
+// ── most forked ──
+function slideMostForked(repos) {
+  const top=[...repos].filter(r=>!r.fork).sort((a,b)=>b.forks_count-a.forks_count).slice(0,3);
+  let o='';
+  top.forEach((r,i)=>{
+    const ry=8+i*60;
+    o+=`<rect x="8" y="${ry}" width="${W-16}" height="52" rx="6" fill="${GH.card}" stroke="${GH.border}" stroke-width="1"/>`;
+    o+=`<rect x="8" y="${ry}" width="3" height="52" rx="2" fill="${GH.purple}" opacity="${1-i*0.3}"/>`;
+    o+=T(20,ry+20,r.name.slice(0,32),13,GH.blue,600);
+    o+=T(W-16,ry+20,'⑂ '+fmt(r.forks_count),12,GH.purple,600,'end');
+    o+=T(20,ry+37,(r.description||'').slice(0,56),11,GH.sec);
+    if(r.language){
+      o+=`<circle cx="${W-52}" cy="${ry+32}" r="5" fill="${lc(r.language)}"/>`;
+      o+=T(W-43,ry+37,r.language.slice(0,12),10,GH.mut);
+    }
+  });
+  return svg(o);
+}
+
+// ── avg stars per repo ──
+function slideAvgStars(repos) {
+  const own=repos.filter(r=>!r.fork);
+  const total=own.reduce((s,r)=>s+r.stargazers_count,0);
+  const avg=own.length?(total/own.length):0;
+  const cx=W/2,cy=H/2-12;
+  let o='';
+  o+=`<circle cx="${cx}" cy="${cy}" r="78" fill="${GH.yellow}" opacity="0.04"/>`;
+  o+=`<circle cx="${cx}" cy="${cy}" r="50" fill="${GH.yellow}" opacity="0.05"/>`;
+  o+=T(cx,cy+14,avg<10?avg.toFixed(1):Math.round(avg).toString(),60,GH.text,700,'middle');
+  o+=T(cx,cy+36,'avg stars per repo',13,GH.yellow,600,'middle');
+  o+=T(cx,cy+54,'('+own.length+' original repos)',11,GH.mut,400,'middle');
+  return svg(o);
+}
+
+// ── account age ──
+function slideAccountAge(user) {
+  const created=new Date(user.created_at);
+  const yrs=new Date().getFullYear()-created.getFullYear();
+  const cx=W/2,cy=H/2-12;
+  let o='';
+  o+=`<circle cx="${cx}" cy="${cy}" r="78" fill="${GH.green}" opacity="0.04"/>`;
+  o+=`<circle cx="${cx}" cy="${cy}" r="50" fill="${GH.green}" opacity="0.05"/>`;
+  o+=T(cx,cy+14,yrs+'y',60,GH.text,700,'middle');
+  o+=T(cx,cy+36,'on github',13,GH.green,600,'middle');
+  o+=T(cx,cy+54,'since '+created.toLocaleDateString('en-US',{month:'short',year:'numeric'}),11,GH.mut,400,'middle');
+  return svg(o);
+}
+
+// ── total forks received ──
+function slideTotalForks(repos) {
+  const total=repos.filter(r=>!r.fork).reduce((s,r)=>s+r.forks_count,0);
+  return slideStat(total,'total forks received',GH.purple);
+}
+
+// ── open issues & PRs ──
+function slideIssues(repos) {
+  const issues=repos.filter(r=>!r.fork).reduce((s,r)=>s+(r.open_issues_count||0),0);
+  return slideStat(issues,'open issues across repos',GH.red);
 }
 
 // ════════════════════════════════════════════
-//  SLIDE PICKER  —  10-min bucket rotation
+//  PICKER
 // ════════════════════════════════════════════
-function pickSlide(user, repos, events, theme, overrideIdx) {
-  const bucket = Math.floor(Date.now() / (10*60*1000));
-
-  const SLIDES = [
-    () => slideBio(user, theme),
-    () => slideStatRepos(user, theme),
-    () => slideStatStars(repos, theme),
-    () => slideStatFollowers(user, theme),
-    () => slideStatFollowing(user, theme),
-    () => slideLangBar(repos, theme),
-    () => slideTopRepos(repos, theme),
-    () => slideHeatmap(events, theme),
-    () => slideCommits(events, theme),
-    () => slideEvents(events, theme),
-    () => slideSpotlight(repos, theme),
-    () => slideLangList(repos, theme),
+function pickSlide(user, repos, events, commits, overrideIdx) {
+  const bucket=Math.floor(Date.now()/(10*60*1000));
+  const SLIDES=[
+    ()=>slideStat(user.public_repos,       'public repositories', GH.blue),
+    ()=>slideStat(repos.reduce((s,r)=>s+r.stargazers_count,0),'total stars earned',GH.yellow),
+    ()=>slideStat(user.followers,          'followers',           GH.green),
+    ()=>slideStat(user.following,          'following',           GH.pink),
+    ()=>slideLangBar(repos),
+    ()=>slideTopRepos(repos),
+    ()=>slideHeatmap(events),
+    ()=>slideCommits(commits),
+    ()=>slideEvents(events),
+    ()=>slideSpotlight(repos),
+    ()=>slideLangList(repos),
+    ()=>slideMostForked(repos),
+    ()=>slideAvgStars(repos),
+    ()=>slideAccountAge(user),
+    ()=>slideTotalForks(repos),
+    ()=>slideIssues(repos),
   ];
-
-  const idx = (overrideIdx !== undefined && overrideIdx >= 0 && overrideIdx < SLIDES.length)
-    ? overrideIdx
-    : bucket % SLIDES.length;
+  const idx=(overrideIdx!==undefined&&overrideIdx>=0&&overrideIdx<SLIDES.length)
+    ?overrideIdx:bucket%SLIDES.length;
   return SLIDES[idx]();
 }
 
 // ════════════════════════════════════════════
-//  VERCEL HANDLER
+//  HANDLER
 // ════════════════════════════════════════════
 module.exports = async function handler(req, res) {
-  const q        = req.query||{};
-  const username = q.user  || null;
-  const theme    = q.theme || 'dark';
+  const q=req.query||{};
+  const username=q.user||null;
 
-  res.setHeader('Content-Type', 'image/svg+xml');
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Content-Type','image/svg+xml');
+  res.setHeader('Access-Control-Allow-Origin','*');
 
-  function errSVG(msg) {
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="80" viewBox="0 0 ${W} 80">`
-      +`<rect width="${W}" height="80" rx="10" fill="#0d0d14" stroke="rgba(255,255,255,.08)" stroke-width="1"/>`
-      +`<text x="16" y="28" font-family="monospace" font-size="11" fill="#f472b6" font-weight="600">gh-card error</text>`
-      +`<text x="16" y="46" font-family="monospace" font-size="9" fill="#6b6b80">${esc(String(msg).slice(0,68))}</text>`
-      +`<text x="16" y="62" font-family="monospace" font-size="8" fill="#3d2fa0">set GITHUB_TOKEN env var to raise rate limit</text>`
-      +`</svg>`;
-  }
+  const errSVG=msg=>`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="80" viewBox="0 0 ${W} 80">`
+    +`<rect width="${W}" height="80" rx="6" fill="${GH.card}" stroke="${GH.border}" stroke-width="1"/>`
+    +`<text x="14" y="30" font-family="monospace" font-size="11" fill="${GH.red}" font-weight="600">gh-card error</text>`
+    +`<text x="14" y="48" font-family="monospace" font-size="9" fill="${GH.sec}">${esc(String(msg).slice(0,70))}</text>`
+    +`<text x="14" y="63" font-family="monospace" font-size="8" fill="${GH.mut}">set GITHUB_TOKEN env var to raise rate limit</text>`
+    +`</svg>`;
 
-  if (!username) return res.status(200).send(errSVG('Missing ?user= query param'));
+  if(!username) return res.status(200).send(errSVG('Missing ?user= query param'));
 
-  const token = process.env.GITHUB_TOKEN || '';
+  const token=process.env.GITHUB_TOKEN||'';
   try {
-    const base = 'https://api.github.com';
+    const base='https://api.github.com';
+
+    // core parallel fetch
     const [user, repos, events] = await Promise.all([
-      fetchGH(`${base}/users/${username}`, token),
-      fetchGH(`${base}/users/${username}/repos?sort=updated&per_page=100`, token),
-      fetchGH(`${base}/users/${username}/events/public?per_page=100`, token),
+      gh(`${base}/users/${username}`, token),
+      gh(`${base}/users/${username}/repos?sort=updated&per_page=100`, token),
+      gh(`${base}/users/${username}/events/public?per_page=100`, token),
     ]);
-    const slideParam = q._slide !== undefined ? parseInt(q._slide, 10) : undefined;
-    const svgOut = pickSlide(user, repos, events, theme, slideParam);
-    // only cache for 10min when no override (real embed); no-cache for preview
-    const cacheHeader = slideParam !== undefined
-      ? 'no-cache'
-      : 's-maxage=600, stale-while-revalidate=60';
-    res.setHeader('Cache-Control', cacheHeader);
+
+    // fetch real commits from the most recently pushed repo
+    let commits=[];
+    const reposSorted=[...repos].sort((a,b)=>new Date(b.pushed_at)-new Date(a.pushed_at));
+    const reposToTry=reposSorted.filter(r=>!r.fork&&r.pushed_at).slice(0,3);
+    for(const repo of reposToTry){
+      try{
+        const data=await gh(`${base}/repos/${username}/${repo.name}/commits?per_page=20&author=${username}`,token);
+        if(Array.isArray(data)&&data.length){
+          commits.push(...data.map(c=>({
+            sha:  c.sha?c.sha.slice(0,7):'???????',
+            msg:  c.commit&&c.commit.message?(c.commit.message.split('\n')[0].trim()||'update'):'update',
+            repo: repo.name,
+            time: c.commit&&c.commit.author?c.commit.author.date:repo.pushed_at,
+          })));
+        }
+      }catch(e){/* skip this repo */}
+      if(commits.length>=10) break;
+    }
+    // also pull from push events as fallback
+    events.forEach(e=>{
+      if(e.type==='PushEvent'&&e.payload&&e.payload.commits){
+        e.payload.commits.forEach(c=>{
+          commits.push({
+            sha:  c.sha?c.sha.slice(0,7):'???????',
+            msg:  (c.message||'').split('\n')[0].trim()||'update',
+            repo: e.repo&&e.repo.name?e.repo.name.split('/').pop():'?',
+            time: e.created_at,
+          });
+        });
+      }
+    });
+
+    const slideParam=q._slide!==undefined?parseInt(q._slide,10):undefined;
+    const svgOut=pickSlide(user,repos,events,commits,slideParam);
+    res.setHeader('Cache-Control',slideParam!==undefined?'no-cache':'s-maxage=600,stale-while-revalidate=60');
     return res.status(200).send(svgOut);
-  } catch(err) {
-    res.setHeader('Cache-Control', 'no-cache');
+  } catch(err){
+    res.setHeader('Cache-Control','no-cache');
     return res.status(200).send(errSVG(err.message));
   }
 };

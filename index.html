@@ -1,359 +1,582 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-color-mode="dark" data-dark-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>gh-card</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<title>gh-card · GitHub Profile Cards</title>
 <style>
-* { margin:0; padding:0; box-sizing:border-box; }
+/* ── GitHub design tokens ───────────────────────────────────────── */
+:root {
+  --color-canvas-default:     #0d1117;
+  --color-canvas-subtle:      #161b22;
+  --color-canvas-inset:       #010409;
+  --color-border-default:     #30363d;
+  --color-border-muted:       #21262d;
+  --color-fg-default:         #e6edf3;
+  --color-fg-muted:           #8b949e;
+  --color-fg-subtle:          #6e7681;
+  --color-accent-fg:          #58a6ff;
+  --color-accent-emphasis:    #1f6feb;
+  --color-success-fg:         #3fb950;
+  --color-attention-fg:       #d29922;
+  --color-danger-fg:          #f85149;
+  --color-done-fg:            #bc8cff;
+  --color-btn-bg:             #21262d;
+  --color-btn-border:         rgba(240,246,252,.1);
+  --color-btn-hover-bg:       #30363d;
+  --color-btn-primary-bg:     #238636;
+  --color-btn-primary-hover:  #2ea043;
+  --color-header-bg:          #161b22;
+  --shadow-small: 0 0 transparent;
+  --shadow-medium: 0 3px 6px #010409;
+}
+*  { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 14px; }
 body {
-  background: #0a0a10;
-  color: #e8e8f0;
-  font-family: 'DM Mono', monospace;
+  background: var(--color-canvas-default);
+  color: var(--color-fg-default);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  line-height: 1.5;
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 3rem 1.5rem 4rem;
 }
 
-h1 {
-  font-family: 'Syne', sans-serif;
-  font-size: 2rem;
-  font-weight: 800;
-  background: linear-gradient(135deg, #7c6af7, #2dd4bf);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  margin-bottom: .25rem;
-}
-.sub {
-  font-size: .75rem;
-  color: #5a5a70;
-  margin-bottom: 2.5rem;
-  letter-spacing: .06em;
-}
-
-.panel {
-  background: #111118;
-  border: 1px solid rgba(255,255,255,.08);
-  border-radius: 14px;
-  padding: 1.5rem;
-  width: 100%;
-  max-width: 560px;
-  margin-bottom: 1.2rem;
-}
-
-/* controls row */
-.controls {
-  display: flex;
-  gap: .5rem;
-  margin-bottom: 1.2rem;
-  flex-wrap: wrap;
-}
-input, select {
-  background: #18181f;
-  border: 1px solid rgba(255,255,255,.1);
-  color: #e8e8f0;
-  font-family: 'DM Mono', monospace;
-  font-size: .8rem;
-  padding: .45rem .85rem;
-  border-radius: 7px;
-  outline: none;
-  transition: border-color .2s;
-}
-input { flex: 1; min-width: 140px; }
-input:focus, select:focus { border-color: #7c6af7; }
-
-.btn {
-  background: #7c6af7;
-  color: #fff;
-  border: none;
-  font-family: 'DM Mono', monospace;
-  font-size: .8rem;
-  padding: .45rem 1rem;
-  border-radius: 7px;
-  cursor: pointer;
-  transition: opacity .15s, transform .1s;
-  white-space: nowrap;
-}
-.btn:hover  { opacity: .85; }
-.btn:active { transform: scale(.97); }
-
-/* force-refresh button — distinct style */
-.btn-refresh {
-  background: transparent;
-  border: 1px solid rgba(255,255,255,.12);
-  color: #7c6af7;
-  font-family: 'DM Mono', monospace;
-  font-size: .8rem;
-  padding: .45rem 1rem;
-  border-radius: 7px;
-  cursor: pointer;
-  transition: border-color .2s, background .2s;
-  white-space: nowrap;
-}
-.btn-refresh:hover { border-color: #7c6af7; background: rgba(124,106,247,.08); }
-
-/* card preview area */
-.preview-wrap {
-  position: relative;
-  background: #0d0d14;
-  border: 1px solid rgba(255,255,255,.06);
-  border-radius: 10px;
-  overflow: hidden;
+/* ── header ─────────────────────────────────────────────────────── */
+.gh-header {
+  background: var(--color-header-bg);
+  border-bottom: 1px solid var(--color-border-default);
+  padding: 0 16px;
+  height: 48px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  min-height: 195px;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
-.preview-wrap img {
-  display: block;
-  width: 100%;
-  max-width: 495px;
-  height: auto;
+.gh-header-logo { color: var(--color-fg-default); display: flex; align-items: center; }
+.gh-header-logo svg { fill: var(--color-fg-default); width: 32px; height: 32px; }
+.gh-header-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-fg-default);
+  text-decoration: none;
 }
-.preview-wrap .loading-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(10,10,16,.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity .2s;
-}
-.preview-wrap.loading .loading-overlay { opacity: 1; }
-.spinner {
-  width: 20px; height: 20px;
-  border: 2px solid rgba(255,255,255,.1);
-  border-top-color: #7c6af7;
-  border-radius: 50%;
-  animation: spin .7s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
+.gh-header-title span { color: var(--color-fg-muted); font-weight: 400; }
 
-/* slide counter */
-.slide-info {
+/* ── main layout ────────────────────────────────────────────────── */
+.container {
+  max-width: 1012px;
+  margin: 0 auto;
+  padding: 32px 16px 64px;
+}
+
+/* ── repo-style hero ────────────────────────────────────────────── */
+.repo-header {
+  border-bottom: 1px solid var(--color-border-default);
+  padding-bottom: 16px;
+  margin-bottom: 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: .75rem;
-  font-size: .68rem;
-  color: #5a5a70;
+  flex-wrap: wrap;
+  gap: 8px;
 }
-.slide-dots { display: flex; gap: 4px; }
-.dot {
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: rgba(255,255,255,.1);
-  transition: background .3s;
+.repo-name {
+  font-size: 20px;
+  font-weight: 400;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
 }
-.dot.active { background: #7c6af7; }
+.repo-name a { color: var(--color-accent-fg); text-decoration: none; }
+.repo-name a:hover { text-decoration: underline; }
+.repo-name .sep { color: var(--color-fg-muted); font-weight: 300; }
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 2em;
+  border: 1px solid var(--color-border-default);
+  color: var(--color-fg-muted);
+}
 
-/* snippet */
-.snippet-label {
-  font-size: .62rem;
-  letter-spacing: .14em;
-  text-transform: uppercase;
-  color: #5a5a70;
-  margin: 1.2rem 0 .5rem;
+/* ── two-column layout ──────────────────────────────────────────── */
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 296px;
+  gap: 24px;
+  align-items: start;
 }
-.snippet {
+@media(max-width: 767px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar { order: -1; }
+}
+
+/* ── box ────────────────────────────────────────────────────────── */
+.box {
+  border: 1px solid var(--color-border-default);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.box-header {
+  background: var(--color-canvas-subtle);
+  border-bottom: 1px solid var(--color-border-default);
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.box-body { padding: 16px; }
+
+/* ── card preview ───────────────────────────────────────────────── */
+.card-preview {
+  background: var(--color-canvas-inset);
+  border-radius: 4px;
+  min-height: 195px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   position: relative;
-  background: #09090f;
-  border: 1px solid rgba(255,255,255,.07);
-  border-radius: 8px;
-  padding: .8rem 2.8rem .8rem 1rem;
-  font-size: .72rem;
-  color: #a99cf9;
-  line-height: 1.7;
+  overflow: hidden;
+  /* checkerboard to show transparency */
+  background-image:
+    linear-gradient(45deg,#1c2128 25%,transparent 25%),
+    linear-gradient(-45deg,#1c2128 25%,transparent 25%),
+    linear-gradient(45deg,transparent 75%,#1c2128 75%),
+    linear-gradient(-45deg,transparent 75%,#1c2128 75%);
+  background-size: 20px 20px;
+  background-position: 0 0,0 10px,10px -10px,-10px 0px;
+}
+.card-preview img {
+  width: 100%;
+  max-width: 495px;
+  display: block;
+  position: relative;
+  z-index: 1;
+}
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(1,4,9,.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .15s;
+}
+.card-preview.loading .loading-overlay { opacity: 1; }
+.spinner {
+  width: 24px; height: 24px;
+  border: 2px solid var(--color-border-default);
+  border-top-color: var(--color-accent-fg);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* slide strip ──────────────────────────────────────────────────── */
+.slide-strip {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.slide-chip {
+  padding: 3px 10px;
+  font-size: 12px;
+  border-radius: 2em;
+  border: 1px solid var(--color-border-default);
+  color: var(--color-fg-muted);
+  cursor: pointer;
+  background: transparent;
+  transition: background .12s, border-color .12s, color .12s;
+  font-family: inherit;
+}
+.slide-chip:hover { background: var(--color-btn-hover-bg); color: var(--color-fg-default); }
+.slide-chip.active {
+  background: var(--color-accent-emphasis);
+  border-color: var(--color-accent-emphasis);
+  color: #fff;
+}
+
+/* ── form elements ──────────────────────────────────────────────── */
+.field-group { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+.field-label { font-size: 13px; font-weight: 600; }
+.field-note  { font-size: 12px; color: var(--color-fg-muted); }
+
+.gh-input {
+  background: var(--color-canvas-default);
+  border: 1px solid var(--color-border-default);
+  color: var(--color-fg-default);
+  font-family: inherit;
+  font-size: 14px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  outline: none;
+  width: 100%;
+  transition: border-color .15s, box-shadow .15s;
+}
+.gh-input:focus {
+  border-color: var(--color-accent-emphasis);
+  box-shadow: 0 0 0 3px rgba(31,111,235,.3);
+}
+.gh-input::placeholder { color: var(--color-fg-subtle); }
+
+select.gh-input { cursor: pointer; }
+
+.btn-row { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  border-radius: 6px;
+  border: 1px solid var(--color-btn-border);
+  cursor: pointer;
+  transition: background .12s;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.btn-default {
+  background: var(--color-btn-bg);
+  color: var(--color-fg-default);
+}
+.btn-default:hover { background: var(--color-btn-hover-bg); }
+
+.btn-primary {
+  background: var(--color-btn-primary-bg);
+  border-color: rgba(240,246,252,.1);
+  color: #fff;
+}
+.btn-primary:hover { background: var(--color-btn-primary-hover); }
+
+/* ── code snippet ───────────────────────────────────────────────── */
+.snippet-wrap {
+  position: relative;
+  margin-top: 8px;
+}
+.code-block {
+  background: var(--color-canvas-inset);
+  border: 1px solid var(--color-border-default);
+  border-radius: 6px;
+  padding: 10px 40px 10px 12px;
+  font-family: ui-monospace,'SFMono-Regular','SF Mono',Menlo,Consolas,monospace;
+  font-size: 12px;
+  color: var(--color-fg-default);
   overflow-x: auto;
   white-space: nowrap;
+  line-height: 1.6;
 }
 .copy-btn {
   position: absolute;
-  top: 50%; right: .6rem;
+  top: 50%; right: 6px;
   transform: translateY(-50%);
-  background: #1a1a27;
-  color: #6b6b80;
-  border: 1px solid rgba(255,255,255,.08);
-  font-family: 'DM Mono', monospace;
-  font-size: .62rem;
-  padding: .2rem .55rem;
+  background: var(--color-btn-bg);
+  border: 1px solid var(--color-border-default);
+  color: var(--color-fg-muted);
+  font-family: inherit;
+  font-size: 11px;
+  padding: 3px 8px;
   border-radius: 5px;
   cursor: pointer;
-  transition: color .15s;
+  transition: color .12s;
 }
-.copy-btn:hover { color: #e8e8f0; }
-.copy-btn.copied { color: #4ade80; border-color: #4ade80; }
+.copy-btn:hover { color: var(--color-fg-default); }
+.copy-btn.ok { color: var(--color-success-fg); border-color: var(--color-success-fg); }
 
-.params {
+/* ── about section (sidebar) ────────────────────────────────────── */
+.about-section { margin-bottom: 16px; }
+.about-section p { color: var(--color-fg-muted); font-size: 13px; line-height: 1.6; }
+.topic-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.topic {
+  background: rgba(56,139,253,.15);
+  color: var(--color-accent-fg);
+  border-radius: 2em;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.stat-row { display: flex; align-items: center; gap: 6px; padding: 4px 0; font-size: 13px; }
+.stat-row svg { fill: var(--color-fg-muted); width: 16px; height: 16px; flex-shrink: 0; }
+.stat-row strong { font-weight: 600; }
+.stat-row span { color: var(--color-fg-muted); }
+
+/* ── params table ───────────────────────────────────────────────── */
+.param-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.param-table td { padding: 6px 8px; border-bottom: 1px solid var(--color-border-muted); vertical-align: top; }
+.param-table tr:last-child td { border-bottom: none; }
+.param-table td:first-child { font-family: ui-monospace,monospace; font-size: 12px; color: var(--color-done-fg); white-space: nowrap; width: 100px; }
+.param-table td:last-child { color: var(--color-fg-muted); }
+
+/* ── alert ──────────────────────────────────────────────────────── */
+.alert {
+  border: 1px solid var(--color-attention-fg);
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: var(--color-attention-fg);
+  background: rgba(210,153,34,.08);
   display: flex;
-  flex-wrap: wrap;
-  gap: .4rem;
-  margin-top: .8rem;
+  gap: 8px;
+  align-items: flex-start;
 }
-.param-chip {
-  background: #18181f;
-  border: 1px solid rgba(255,255,255,.08);
-  border-radius: 5px;
-  padding: .25rem .65rem;
-  font-size: .65rem;
-  color: #6b6b80;
-}
-.param-chip strong { color: #e8e8f0; }
 </style>
 </head>
 <body>
 
-<h1>gh-card</h1>
-<div class="sub">one rotating info block · refreshes every 10 min · embed in readme</div>
-
-<div class="panel">
-
-  <!-- controls -->
-  <div class="controls">
-    <input  id="uname" type="text" placeholder="github username" value="torvalds"/>
-    <select id="theme">
-      <option value="dark">dark</option>
-      <option value="light">light</option>
-    </select>
-    <button class="btn"         onclick="load()">preview</button>
-    <button class="btn-refresh" onclick="forceNext()" title="skip to next slide">↻ next slide</button>
+<!-- header -->
+<div class="gh-header">
+  <div class="gh-header-logo">
+    <svg height="32" viewBox="0 0 16 16" width="32" aria-hidden="true">
+      <path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/>
+    </svg>
   </div>
-
-  <!-- preview -->
-  <div class="preview-wrap" id="preview-wrap">
-    <img id="img" src="" alt="gh-card preview"/>
-    <div class="loading-overlay"><div class="spinner"></div></div>
-  </div>
-
-  <!-- slide indicator -->
-  <div class="slide-info">
-    <span id="slide-label">—</span>
-    <div class="slide-dots" id="dots"></div>
-    <span id="slide-num">—</span>
-  </div>
-
-  <!-- snippets -->
-  <div class="snippet-label">embed in readme</div>
-  <div class="snippet">
-    <button class="copy-btn" id="copy-md" onclick="copy('md')">copy</button>
-    <span id="snip-md"></span>
-  </div>
-
-  <div class="snippet-label">html (for sizing control)</div>
-  <div class="snippet">
-    <button class="copy-btn" id="copy-html" onclick="copy('html')">copy</button>
-    <span id="snip-html"></span>
-  </div>
-
-  <div class="params">
-    <div class="param-chip"><strong>?user=</strong>username — required</div>
-    <div class="param-chip"><strong>&theme=</strong>dark|light</div>
-    <div class="param-chip"><strong>&slide=</strong>0-11 — pin a slide</div>
-  </div>
-
+  <a class="gh-header-title" href="#">gh-card <span>/ readme-cards</span></a>
 </div>
 
+<div class="container">
+
+  <!-- repo header -->
+  <div class="repo-header">
+    <div class="repo-name">
+      <svg height="16" viewBox="0 0 16 16" width="16" style="fill:var(--color-fg-muted)"><path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8V1.5Z"/></svg>
+      <a href="#">gh-card</a>
+      <span class="sep">/</span>
+      <a href="#">readme-cards</a>
+      <span class="badge">Public</span>
+    </div>
+  </div>
+
+  <div class="layout">
+
+    <!-- main column -->
+    <div class="main">
+
+      <!-- preview box -->
+      <div class="box" style="margin-bottom:16px">
+        <div class="box-header">
+          <span>Preview</span>
+          <div style="display:flex;gap:6px">
+            <select class="gh-input" id="theme" style="width:auto;padding:2px 8px;font-size:12px">
+              <option value="dark">dark</option>
+              <option value="light">light</option>
+            </select>
+            <button class="btn btn-default" style="padding:3px 12px;font-size:12px" onclick="load()">
+              <svg height="14" viewBox="0 0 16 16" width="14" style="fill:currentColor"><path d="M1.705 8.005a.75.75 0 0 1 .834.656 5.5 5.5 0 0 0 9.592 2.97l-1.204-1.204a.25.25 0 0 1 .177-.427h3.646a.25.25 0 0 1 .25.25v3.646a.25.25 0 0 1-.427.177l-1.38-1.38A7.002 7.002 0 0 1 1.05 8.84a.75.75 0 0 1 .656-.834ZM8 2.5a5.487 5.487 0 0 0-4.131 1.869l1.204 1.204A.25.25 0 0 1 4.896 6H1.25A.25.25 0 0 1 1 5.75V2.104a.25.25 0 0 1 .427-.177l1.38 1.38A7.002 7.002 0 0 1 14.95 7.16a.75.75 0 0 1-1.49.178A5.5 5.5 0 0 0 8 2.5Z"/></svg>
+              refresh
+            </button>
+          </div>
+        </div>
+        <div class="box-body">
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <input class="gh-input" id="uname" type="text" placeholder="github username" value="torvalds" style="max-width:240px"/>
+            <button class="btn btn-primary" onclick="load()">Load card</button>
+          </div>
+          <div class="card-preview" id="preview-wrap">
+            <img id="img" src="" alt="card preview"/>
+            <div class="loading-overlay"><div class="spinner"></div></div>
+          </div>
+          <div class="slide-strip" id="strip"></div>
+        </div>
+      </div>
+
+      <!-- snippets box -->
+      <div class="box" style="margin-bottom:16px">
+        <div class="box-header">Embed in README</div>
+        <div class="box-body">
+          <div class="field-group">
+            <div class="field-label">Markdown</div>
+            <div class="field-note">Paste this in your README.md</div>
+            <div class="snippet-wrap">
+              <div class="code-block" id="snip-md"></div>
+              <button class="copy-btn" id="copy-md" onclick="copy('md')">copy</button>
+            </div>
+          </div>
+          <div class="field-group" style="margin-top:8px">
+            <div class="field-label">HTML <span style="font-weight:400;color:var(--color-fg-muted)">(for width control)</span></div>
+            <div class="snippet-wrap">
+              <div class="code-block" id="snip-html"></div>
+              <button class="copy-btn" id="copy-html" onclick="copy('html')">copy</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- params box -->
+      <div class="box">
+        <div class="box-header">Query parameters</div>
+        <div class="box-body" style="padding:0">
+          <table class="param-table">
+            <tr><td>?user=</td><td>GitHub username — <strong>required</strong></td></tr>
+            <tr><td>&amp;theme=</td><td><code style="font-size:11px">dark</code> (default) or <code style="font-size:11px">light</code></td></tr>
+            <tr><td>&amp;_slide=</td><td>0–15 — pin to a specific slide (no caching)</td></tr>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- /main -->
+
+    <!-- sidebar -->
+    <div class="sidebar">
+
+      <div class="box" style="margin-bottom:16px">
+        <div class="box-header">About</div>
+        <div class="box-body">
+          <div class="about-section">
+            <p>Dynamic SVG cards for your GitHub profile README. One block of info, rotating every 10 minutes.</p>
+          </div>
+          <div class="topic-list">
+            <span class="topic">github</span>
+            <span class="topic">readme</span>
+            <span class="topic">svg</span>
+            <span class="topic">vercel</span>
+            <span class="topic">profile-card</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="box" style="margin-bottom:16px">
+        <div class="box-header">Slides (16 total)</div>
+        <div class="box-body" style="padding:0">
+          <div id="slide-list" style="font-size:13px"></div>
+        </div>
+      </div>
+
+      <div class="box">
+        <div class="box-header">Rate limits</div>
+        <div class="box-body">
+          <p style="font-size:13px;color:var(--color-fg-muted);line-height:1.6">
+            Unauthenticated: <strong style="color:var(--color-fg-default)">60 req/hr</strong> per IP.<br><br>
+            Add <code style="font-size:11px;background:var(--color-canvas-inset);padding:1px 5px;border-radius:3px">GITHUB_TOKEN</code> to Vercel env vars to get <strong style="color:var(--color-fg-default)">5000 req/hr</strong>.
+          </p>
+        </div>
+      </div>
+
+    </div><!-- /sidebar -->
+  </div><!-- /layout -->
+</div><!-- /container -->
+
 <script>
-const TOTAL_SLIDES = 12;
 const SLIDE_NAMES = [
-  'PROFILE','REPOS','STARS','FOLLOWERS','FOLLOWING',
-  'LANG BAR','TOP REPOS','ACTIVITY','COMMITS','EVENTS',
-  'SPOTLIGHT','LANG LIST',
+  'public repos','total stars','followers','following',
+  'lang bar','top repos','activity heatmap','random commits',
+  'recent events','spotlight repo','lang list','most forked',
+  'avg stars','account age','total forks','open issues',
 ];
+const TOTAL = SLIDE_NAMES.length;
+let currentSlide = null;
 
-// offset simulates bucket skipping for the preview only
-let slideOffset = 0;
+// build sidebar slide list
+const list = document.getElementById('slide-list');
+SLIDE_NAMES.forEach((name, i) => {
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 16px;border-bottom:1px solid var(--color-border-muted);cursor:pointer';
+  row.innerHTML = `<span style="font-family:monospace;font-size:11px;color:var(--color-fg-subtle);width:20px;flex-shrink:0">${i}</span>`
+    + `<span id="slide-name-${i}" style="flex:1">${name}</span>`;
+  row.addEventListener('click', () => loadSlide(i));
+  row.id = 'slide-row-' + i;
+  list.appendChild(row);
+});
+// remove last border
+list.lastChild && (list.lastChild.style.borderBottom = 'none');
 
-function currentBucket() {
-  return Math.floor(Date.now() / (10*60*1000));
+// build slide strip in preview
+const strip = document.getElementById('strip');
+SLIDE_NAMES.forEach((name, i) => {
+  const chip = document.createElement('button');
+  chip.className = 'slide-chip';
+  chip.textContent = name;
+  chip.id = 'chip-' + i;
+  chip.addEventListener('click', () => loadSlide(i));
+  strip.appendChild(chip);
+});
+
+function setActive(idx) {
+  currentSlide = idx;
+  document.querySelectorAll('.slide-chip').forEach((c,i) => {
+    c.classList.toggle('active', i===idx);
+  });
+  document.querySelectorAll('[id^="slide-row-"]').forEach(r => {
+    const i = parseInt(r.id.split('-').pop());
+    r.style.background = i===idx ? 'rgba(56,139,253,.12)' : '';
+    r.querySelector('[id^="slide-name-"]').style.color = i===idx ? 'var(--color-accent-fg)' : '';
+  });
 }
-function currentSlideIdx() {
-  return (currentBucket() + slideOffset) % TOTAL_SLIDES;
-}
 
-function buildUrl(bust) {
+function buildUrl(idx) {
   const u = document.getElementById('uname').value.trim();
   const t = document.getElementById('theme').value;
   if (!u) return null;
   let url = `/api/card?user=${encodeURIComponent(u)}&theme=${t}`;
-  // bust cache by passing a bucket param so Vercel sees a new URL
-  if (bust !== undefined) url += `&_b=${bust}`;
+  if (idx !== null) url += `&_slide=${idx}&_t=${Date.now()}`;
   return url;
-}
-
-function updateDots(idx) {
-  const cont = document.getElementById('dots');
-  cont.innerHTML = '';
-  for (let i=0; i<TOTAL_SLIDES; i++) {
-    const d = document.createElement('div');
-    d.className = 'dot' + (i===idx?' active':'');
-    cont.appendChild(d);
-  }
-  document.getElementById('slide-label').textContent = SLIDE_NAMES[idx];
-  document.getElementById('slide-num').textContent   = (idx+1)+' / '+TOTAL_SLIDES;
 }
 
 function updateSnippets() {
   const u = document.getElementById('uname').value.trim() || 'username';
   const t = document.getElementById('theme').value;
   const base = location.origin;
-  const url = `${base}/api/card?user=${u}${t!=='dark'?'&theme='+t:''}`;
+  const url = `${base}/api/card?user=${u}` + (t !== 'dark' ? `&theme=${t}` : '');
   document.getElementById('snip-md').textContent   = `![GitHub Stats](${url})`;
   document.getElementById('snip-html').textContent = `<img src="${url}" width="495" alt="GitHub Stats"/>`;
 }
 
-function load() {
-  slideOffset = 0;
-  doLoad((currentBucket() + slideOffset) % TOTAL_SLIDES, false);
-}
-
-function forceNext() {
-  slideOffset = (slideOffset + 1) % TOTAL_SLIDES;
-  // use bucket+offset as cache buster so server picks different slot
-  doLoad((currentBucket() + slideOffset) % TOTAL_SLIDES, true);
-}
-
-function doLoad(idx, bust) {
+function doLoad(url, idx) {
   const wrap = document.getElementById('preview-wrap');
   const img  = document.getElementById('img');
   wrap.classList.add('loading');
-
-  // For the preview we pass _b= to force a different bucket on the server
-  const u = document.getElementById('uname').value.trim();
-  const t = document.getElementById('theme').value;
-  if (!u) { wrap.classList.remove('loading'); return; }
-
-  // We simulate slide selection client-side for the preview by appending _slide=
-  // (server reads it to override bucket % SLIDES)
-  const url = `/api/card?user=${encodeURIComponent(u)}&theme=${t}&_slide=${idx}&_t=${Date.now()}`;
-
-  img.onload  = () => { wrap.classList.remove('loading'); };
-  img.onerror = () => { wrap.classList.remove('loading'); };
+  img.onload  = () => wrap.classList.remove('loading');
+  img.onerror = () => wrap.classList.remove('loading');
   img.src = url;
-
-  updateDots(idx);
+  setActive(idx);
   updateSnippets();
 }
 
+function load() {
+  // load without slide override — server picks current bucket
+  const u = document.getElementById('uname').value.trim();
+  const t = document.getElementById('theme').value;
+  if (!u) return;
+  const url = `/api/card?user=${encodeURIComponent(u)}&theme=${t}&_t=${Date.now()}`;
+  // figure out which slide server would show
+  const bucket = Math.floor(Date.now() / (10*60*1000));
+  const idx = bucket % TOTAL;
+  doLoad(url, idx);
+}
+
+function loadSlide(idx) {
+  const url = buildUrl(idx);
+  if (!url) return;
+  doLoad(url, idx);
+}
+
 function copy(which) {
-  const text = which==='md'
-    ? document.getElementById('snip-md').textContent
-    : document.getElementById('snip-html').textContent;
-  navigator.clipboard.writeText(text).then(() => {
-    const btn = document.getElementById('copy-'+which);
-    btn.textContent='copied!'; btn.classList.add('copied');
-    setTimeout(()=>{ btn.textContent='copy'; btn.classList.remove('copied'); }, 1800);
+  const el  = document.getElementById('snip-' + which);
+  const btn = document.getElementById('copy-' + which);
+  navigator.clipboard.writeText(el.textContent).then(() => {
+    btn.textContent = 'copied!';
+    btn.classList.add('ok');
+    setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('ok'); }, 1800);
   });
 }
 
-// init
 document.getElementById('uname').addEventListener('keydown', e => { if(e.key==='Enter') load(); });
 document.getElementById('theme').addEventListener('change', load);
+
 load();
 </script>
 </body>
