@@ -18,9 +18,10 @@ const ALL_SLIDES = [
   { id:'closedissues', label:'closed issues' },
 ];
 
-// state
-const enabled = new Set(ALL_SLIDES.map(s => s.id));
-let previewSlideIdx = 0; // index within enabled list currently previewed
+// two independent enabled sets
+const enabled1 = new Set(ALL_SLIDES.map(s => s.id));
+const enabled2 = new Set(ALL_SLIDES.map(s => s.id));
+let previewSlideIdx = 0;
 
 // ── build sidebar slide list ──
 const listEl = document.getElementById('slide-list');
@@ -32,7 +33,12 @@ ALL_SLIDES.forEach((s, i) => {
     `<span class="slide-idx">${i}</span>`
     + `<span class="slide-label" id="lbl-${s.id}">${s.label}</span>`
     + `<label class="toggle slide-toggle" onclick="event.stopPropagation();">`
-    +   `<input type="checkbox" id="chk-${s.id}" checked onchange="onToggle('${s.id}')">`
+    +   `<input type="checkbox" id="chk1-${s.id}" checked onchange="onToggle(1,'${s.id}')">`
+    +   `<span class="toggle-track"></span>`
+    +   `<span class="toggle-thumb"></span>`
+    + `</label>`
+    + `<label class="toggle slide-toggle" onclick="event.stopPropagation();">`
+    +   `<input type="checkbox" id="chk2-${s.id}" checked onchange="onToggle(2,'${s.id}')">`
     +   `<span class="toggle-track"></span>`
     +   `<span class="toggle-thumb"></span>`
     + `</label>`;
@@ -43,14 +49,17 @@ ALL_SLIDES.forEach((s, i) => {
   listEl.appendChild(row);
 });
 
+function getSet(n) { return n === 1 ? enabled1 : enabled2; }
+
 function updateCount() {
-  document.getElementById('enabled-count').textContent = '(' + enabled.size + ' / ' + ALL_SLIDES.length + ')';
+  document.getElementById('enabled-count').textContent = '(1: ' + enabled1.size + ' / 2: ' + enabled2.size + ')';
 }
 updateCount();
 
-function onToggle(id) {
-  const chk = document.getElementById('chk-' + id);
-  if (chk.checked) enabled.add(id); else enabled.delete(id);
+function onToggle(badge, id) {
+  const chk = document.getElementById('chk' + badge + '-' + id);
+  const set = getSet(badge);
+  if (chk.checked) set.add(id); else set.delete(id);
   updateCount();
   updateSnippets();
 }
@@ -59,9 +68,11 @@ let allOn = true;
 function toggleAll() {
   allOn = !allOn;
   ALL_SLIDES.forEach(s => {
-    const chk = document.getElementById('chk-' + s.id);
-    chk.checked = allOn;
-    if (allOn) enabled.add(s.id); else enabled.delete(s.id);
+    [1, 2].forEach(b => {
+      const chk = document.getElementById('chk' + b + '-' + s.id);
+      chk.checked = allOn;
+      if (allOn) getSet(b).add(s.id); else getSet(b).delete(s.id);
+    });
   });
   updateCount();
   updateSnippets();
@@ -77,27 +88,36 @@ function setActiveRow(id) {
 }
 
 // ── URL builders ──
-function getEnabledIds() {
-  return ALL_SLIDES.filter(s => enabled.has(s.id)).map(s => s.id);
+function getEnabledIds(badge) {
+  const set = badge ? getSet(badge) : enabled1;
+  return ALL_SLIDES.filter(s => set.has(s.id)).map(s => s.id);
 }
-function cardUrl({ slideIdx, preview } = {}) {
+
+function cardUrl({ slideIdx, preview, badge } = {}) {
   const u = document.getElementById('uname').value.trim();
   if (!u) return null;
   let url = `/api/card?user=${encodeURIComponent(u)}`;
-  const ids = getEnabledIds();
+  const ids = getEnabledIds(badge || 1);
   if (ids.length && ids.length < ALL_SLIDES.length) url += '&slides=' + ids.join(',');
   if (preview && slideIdx !== undefined) url += `&_slide=${slideIdx}&_t=${Date.now()}`;
   return url;
 }
 
-function updateSnippets() {
+function buildEmbedUrl(badge) {
   const u = document.getElementById('uname').value.trim() || 'username';
   const base = location.origin;
   let url = `${base}/api/card?user=${u}`;
-  const ids = getEnabledIds();
+  const ids = getEnabledIds(badge);
   if (ids.length && ids.length < ALL_SLIDES.length) url += '&slides=' + ids.join(',');
-  document.getElementById('snip-md').textContent   = `![GitHub Stats](${url})`;
-  document.getElementById('snip-html').textContent = `<img src="${url}" width="495" alt="GitHub Stats"/>`;
+  return url;
+}
+
+function updateSnippets() {
+  [1, 2].forEach(b => {
+    const url = buildEmbedUrl(b);
+    document.getElementById('snip-md-' + b).textContent   = `![GitHub Stats](${url})`;
+    document.getElementById('snip-html-' + b).textContent = `<img src="${url}" width="495" alt="GitHub Stats"/>`;
+  });
 }
 
 function doLoad(url, slideId) {
@@ -114,32 +134,32 @@ function doLoad(url, slideId) {
 
 // load card without preview override (server picks current bucket)
 function load() {
-  const enabledList = getEnabledIds();
+  const enabledList = getEnabledIds(1);
   if (!enabledList.length) return;
   const bucket = Math.floor(Date.now() / (10*60*1000));
   const idx = bucket % enabledList.length;
   previewSlideIdx = idx;
-  const url = cardUrl({ slideIdx: idx, preview: true });
+  const url = cardUrl({ slideIdx: idx, preview: true, badge: 1 });
   doLoad(url, enabledList[idx]);
 }
 
 // cycle to next slide
 function refresh() {
-  const enabledList = getEnabledIds();
+  const enabledList = getEnabledIds(1);
   if (!enabledList.length) return;
   previewSlideIdx = (previewSlideIdx + 1) % enabledList.length;
-  const url = cardUrl({ slideIdx: previewSlideIdx, preview: true });
+  const url = cardUrl({ slideIdx: previewSlideIdx, preview: true, badge: 1 });
   doLoad(url, enabledList[previewSlideIdx]);
 }
 
 // preview a specific slide by id
 function previewSlide(id) {
-  if (!enabled.has(id)) return;
-  const enabledList = getEnabledIds();
+  if (!enabled1.has(id) && !enabled2.has(id)) return;
+  const enabledList = getEnabledIds(1);
   const idx = enabledList.indexOf(id);
   if (idx < 0) return;
   previewSlideIdx = idx;
-  const url = cardUrl({ slideIdx: idx, preview: true });
+  const url = cardUrl({ slideIdx: idx, preview: true, badge: 1 });
   doLoad(url, id);
 }
 
