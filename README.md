@@ -1,4 +1,4 @@
-# readme-SVG-profile-bento
+# readme-SVG-profile-bengo
 
 > GitHub profile cards as SVG, built for README embeds and shipped serverless.
 
