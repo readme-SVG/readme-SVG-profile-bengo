@@ -1,35 +1,41 @@
-const { W, GH } = require('../lib/constants');
-const { T, svg } = require('../lib/svg');
-const { shuffle, fmt, ago, wrap, lc } = require('../lib/helpers');
+const { W } = require('../lib/constants');
+const { T, rect, circle, svg } = require('../lib/svg');
+const { shuffle, fmt, ago, wrap, lc, trunc, textWidth } = require('../lib/helpers');
+const { emptyState } = require('./common');
 
 module.exports = {
   id: 'spotlight',
-  fn: (user, repos) => {
+  label: 'spotlight repo',
+  needs: ['repos'],
+  render: ({ repos, c }) => {
     const r = shuffle(repos.filter(x => !x.fork && x.description))[0];
-    if (!r) return svg(T(W / 2, 98, 'no repos with descriptions', 13, GH.sec, 400, 'middle'));
+    if (!r) return emptyState(c, 'no repos with descriptions', 'add a description to a repo to spotlight it');
     let o = '';
-    o += T(16, 36, r.name.slice(0, 32), 18, GH.blue, 700);
-    const lines = wrap(r.description, 56);
-    lines.slice(0, 3).forEach((l, i) => { o += T(16, 58 + i * 17, l, 11, GH.sec); });
-    const sy = 58 + Math.min(lines.length, 3) * 17 + 10;
-    o += T(16, sy, `★ ${fmt(r.stargazers_count)}`, 13, GH.yellow, 600);
-    o += T(90, sy, `⑂ ${fmt(r.forks_count)}`, 13, GH.purple, 600);
-    if (r.open_issues_count !== undefined) o += T(160, sy, `● ${r.open_issues_count}`, 13, GH.sec, 600);
+    o += T(16, 36, trunc(r.name, 36), 18, c.blue, 700);
+    const lines = wrap(r.description, 64, 3);
+    lines.forEach((l, i) => { o += T(16, 58 + i * 17, l, 11, c.sec); });
+    const sy = 58 + lines.length * 17 + 10;
+    o += T(16, sy, `★ ${fmt(r.stargazers_count)}`, 13, c.yellow, 600);
+    o += T(90, sy, `⑂ ${fmt(r.forks_count)}`, 13, c.purple, 600);
+    o += T(160, sy, `● ${fmt(r.open_issues_count)}`, 13, c.sec, 600);
+    let tx = 16;
     if (r.language) {
-      o += `<circle cx="17" cy="${sy + 16}" r="6" fill="${lc(r.language)}"/>`;
-      o += T(28, sy + 20, r.language, 11, GH.sec);
+      const lang = trunc(r.language, 16);
+      o += circle(22, sy + 16, 6, lc(r.language));
+      o += T(33, sy + 20, lang, 11, c.sec);
+      tx = 33 + textWidth(lang, 11) + 12;
     }
-    if (r.topics && r.topics.length) {
-      let tx = r.language ? 28 + r.language.length * 6 + 16 : 16;
-      r.topics.slice(0, 4).forEach(t => {
-        const tw = t.length * 5.5 + 16;
-        if (tx + tw > W - 12) return;
-        o += `<rect x="${tx.toFixed(0)}" y="${sy + 8}" width="${tw.toFixed(0)}" height="16" rx="8" fill="rgba(56,139,253,.15)" stroke="${GH.blue}" stroke-width="0.5"/>`;
-        o += T(tx + 8, sy + 20, t.slice(0, 12), 8, GH.blue);
-        tx += tw + 5;
-      });
-    }
-    o += T(W - 14, sy + 20, ago(r.created_at), 10, GH.mut, 400, 'end');
-    return svg(o);
+    const age = ago(r.created_at);
+    const limit = W - 16 - textWidth(age, 10) - 10;
+    r.topics.slice(0, 4).forEach(t => {
+      const label = trunc(t, 14);
+      const tw = textWidth(label, 8) + 16;
+      if (tx + tw > limit) return;
+      o += rect(tx, sy + 8, tw, 16, 8, c.blue, `fill-opacity="0.15" stroke="${c.blue}" stroke-width="0.5"`);
+      o += T(tx + 8, sy + 20, label, 8, c.blue);
+      tx += tw + 5;
+    });
+    o += T(W - 14, sy + 20, age, 10, c.mut, 400, 'end');
+    return svg(o, c, `spotlight: ${r.name}`);
   },
 };

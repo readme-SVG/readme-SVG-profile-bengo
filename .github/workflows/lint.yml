@@ -48,6 +48,14 @@ jobs:
             echo "No package.json found. Skipping lint."
           fi
 
+      - name: Run tests
+        run: |
+          if [ -d test ]; then
+            npm test
+          else
+            echo "No test/ directory found. Skipping tests."
+          fi
+
       - name: Validate JavaScript syntax
         run: |
           if [ -d api ]; then

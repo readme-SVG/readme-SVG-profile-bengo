@@ -1,3 +1,5 @@
+// Rotation order matters: indices are used by `_slide=` and by the preview UI
+// (app.js keeps the same order). Append new slides at the end.
 module.exports = [
   require('./repos'),
   require('./stars'),
@@ -16,4 +18,15 @@ module.exports = [
   require('./issues'),
   require('./latestissues'),
   require('./closedissues'),
+  require('./profile'),
+  require('./overview'),
+  require('./activity'),
+  require('./hours'),
+  require('./weekdays'),
+  require('./langdonut'),
+  require('./topics'),
+  require('./recent'),
+  require('./pullrequests'),
+  require('./contrib'),
+  require('./gists'),
 ];

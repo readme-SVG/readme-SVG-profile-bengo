@@ -1,7 +1,8 @@
-const { GH } = require('../lib/constants');
 const { slideStat } = require('./stat');
 
 module.exports = {
   id: 'following',
-  fn: user => slideStat(user.following, 'following', GH.pink),
+  label: 'following',
+  needs: [],
+  render: ({ user, c }) => slideStat(c, user.following, 'following', c.pink),
 };

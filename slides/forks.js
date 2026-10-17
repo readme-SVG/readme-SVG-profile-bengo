@@ -1,7 +1,9 @@
-const { GH } = require('../lib/constants');
 const { slideStat } = require('./stat');
+const { sumBy } = require('./common');
 
 module.exports = {
   id: 'forks',
-  fn: (user, repos) => slideStat(repos.filter(r => !r.fork).reduce((s, r) => s + r.forks_count, 0), 'total forks received', GH.purple),
+  label: 'total forks',
+  needs: ['repos'],
+  render: ({ repos, c }) => slideStat(c, sumBy(repos.filter(r => !r.fork), 'forks_count'), 'total forks received', c.purple),
 };

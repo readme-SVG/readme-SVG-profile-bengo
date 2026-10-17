@@ -1,26 +1,28 @@
-const { W, GH } = require('../lib/constants');
-const { T, svg } = require('../lib/svg');
-const { lc } = require('../lib/helpers');
+const { W } = require('../lib/constants');
+const { T, rect, circle, svg } = require('../lib/svg');
+const { lc, trunc } = require('../lib/helpers');
+const { emptyState, langCounts } = require('./common');
 
 module.exports = {
   id: 'langlist',
-  fn: (user, repos) => {
-    const map = {};
-    repos.forEach(r => { if (r.language) map[r.language] = (map[r.language] || 0) + 1; });
-    const langs = Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  label: 'language list',
+  needs: ['repos'],
+  render: ({ repos, c }) => {
+    const langs = langCounts(repos).slice(0, 5);
+    if (!langs.length) return emptyState(c, 'no languages detected', 'public repos with code will show up here');
     const tot = langs.reduce((s, [, v]) => s + v, 0) || 1;
-    const maxV = langs[0] ? langs[0][1] : 1;
+    const maxV = langs[0][1] || 1;
     let o = '';
     langs.forEach(([l, n], i) => {
       const ly = 14 + i * 34;
       const pct = (n / tot) * 100;
-      const bw = Math.max((n / maxV) * (W - 160), 4);
-      o += `<circle cx="22" cy="${ly + 12}" r="7" fill="${lc(l)}"/>`;
-      o += T(36, ly + 16, l, 12, GH.text, 600);
-      o += `<rect x="138" y="${ly + 5}" width="${(W - 155).toFixed(0)}" height="14" rx="7" fill="${GH.border}"/>`;
-      o += `<rect x="138" y="${ly + 5}" width="${bw.toFixed(1)}" height="14" rx="7" fill="${lc(l)}" opacity="0.85"/>`;
-      o += T(W - 14, ly + 16, `${pct.toFixed(1)}%`, 11, GH.sec, 500, 'end');
+      const bw = Math.max((n / maxV) * (W - 200), 4);
+      o += circle(22, ly + 12, 7, lc(l));
+      o += T(36, ly + 16, trunc(l, 14), 12, c.text, 600);
+      o += rect(138, ly + 5, W - 200, 14, 7, c.border);
+      o += rect(138, ly + 5, bw, 14, 7, lc(l), 'opacity="0.85"');
+      o += T(W - 14, ly + 16, `${pct.toFixed(1)}%`, 11, c.sec, 500, 'end');
     });
-    return svg(o);
+    return svg(o, c, 'languages');
   },
 };

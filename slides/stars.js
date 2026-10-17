@@ -1,7 +1,9 @@
-const { GH } = require('../lib/constants');
 const { slideStat } = require('./stat');
+const { sumBy } = require('./common');
 
 module.exports = {
   id: 'stars',
-  fn: (user, repos) => slideStat(repos.reduce((s, x) => s + x.stargazers_count, 0), 'total stars earned', GH.yellow),
+  label: 'total stars',
+  needs: ['repos'],
+  render: ({ repos, c }) => slideStat(c, sumBy(repos, 'stargazers_count'), 'total stars earned', c.yellow),
 };
