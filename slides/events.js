@@ -1,36 +1,66 @@
-const { W, H, GH } = require('../lib/constants');
-const { T, svg } = require('../lib/svg');
-const { ago } = require('../lib/helpers');
+const { W } = require('../lib/constants');
+const { T, box, svg } = require('../lib/svg');
+const { ago, trunc } = require('../lib/helpers');
+const { emptyState } = require('./common');
 
-function desc(e) {
-  if (e.type === 'PushEvent' && e.payload?.commits?.length) return [`pushed ${e.payload.commits.length} commit(s)`, e.repo?.name || '?'];
-  if (e.type === 'CreateEvent') return [`created ${e.payload?.ref_type || 'item'}`, e.repo?.name || '?'];
-  if (e.type === 'WatchEvent') return ['starred', e.repo?.name || '?'];
-  if (e.type === 'ForkEvent') return ['forked', e.repo?.name || '?'];
-  if (e.type === 'IssuesEvent') return ['issue activity', e.repo?.name || '?'];
-  if (e.type === 'PullRequestEvent') return ['pull request activity', e.repo?.name || '?'];
-  return [e.type.replace('Event', ''), e.repo?.name || '?'];
+const ICONS = {
+  PushEvent: '↑', CreateEvent: '+', DeleteEvent: '−', WatchEvent: '★', ForkEvent: '⑂',
+  IssuesEvent: '●', IssueCommentEvent: '●', PullRequestEvent: '↵', PullRequestReviewEvent: '↵',
+  PullRequestReviewCommentEvent: '↵', ReleaseEvent: '◆', PublicEvent: '◆',
+};
+
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+
+function describe(e) {
+  const p = e.payload || {};
+  const repo = (e.repo && e.repo.name) || '?';
+  const branch = String(p.ref || '').replace(/^refs\/heads\//, '');
+  switch (e.type) {
+    case 'PushEvent': {
+      const n = (p.commits && p.commits.length) || p.size || 0;
+      if (n) return [`pushed ${plural(n, 'commit')}`, repo];
+      return [branch ? `pushed to ${branch}` : 'pushed', repo];
+    }
+    case 'CreateEvent':
+      return [p.ref_type && p.ref_type !== 'repository' && branch ? `created ${p.ref_type} ${branch}` : `created ${p.ref_type || 'repository'}`, repo];
+    case 'DeleteEvent': return [`deleted ${p.ref_type || 'ref'} ${branch}`.trim(), repo];
+    case 'WatchEvent': return ['starred', repo];
+    case 'ForkEvent': return ['forked', repo];
+    case 'IssuesEvent': return [`${p.action || 'updated'} an issue`, repo];
+    case 'IssueCommentEvent': return ['commented on an issue', repo];
+    case 'PullRequestEvent': {
+      const action = p.action === 'closed' && p.merged ? 'merged' : (p.action || 'updated');
+      return [`${action} a pull request`, repo];
+    }
+    case 'PullRequestReviewEvent': return ['reviewed a pull request', repo];
+    case 'PullRequestReviewCommentEvent': return ['commented on a pull request', repo];
+    case 'ReleaseEvent': return [`${p.action || 'published'} a release`, repo];
+    case 'PublicEvent': return ['made a repository public', repo];
+    case 'MemberEvent': return ['added a collaborator', repo];
+    case 'GollumEvent': return ['updated the wiki', repo];
+    case 'CommitCommentEvent': return ['commented on a commit', repo];
+    default: return [String(e.type || 'activity').replace(/Event$/, '') || 'activity', repo];
+  }
 }
 
 module.exports = {
   id: 'events',
-  fn: (user, repos, events) => {
-    const icons = { PushEvent: '↑', CreateEvent: '+', WatchEvent: '★', ForkEvent: '⑂', IssuesEvent: '●', PullRequestEvent: '↵' };
+  label: 'recent events',
+  needs: ['events'],
+  describe,
+  render: ({ events, c }) => {
     const list = events.slice(0, 4);
+    if (!list.length) return emptyState(c, 'no public events', 'recent public activity will appear here');
     let o = '';
-    if (!list.length) {
-      o += T(W / 2, H / 2, 'no public events', 13, GH.sec, 400, 'middle');
-      return svg(o);
-    }
     list.forEach((e, i) => {
       const ry = 10 + i * 44;
-      o += `<rect x="8" y="${ry}" width="${W - 16}" height="36" rx="6" fill="${GH.card}" stroke="${GH.border}" stroke-width="1"/>`;
-      o += T(20, ry + 23, icons[e.type] || '•', 14, GH.blue, 600);
-      const [line1, line2] = desc(e);
-      o += T(38, ry + 20, line1.slice(0, 42), 12, GH.text, 600);
-      o += T(38, ry + 33, line2.slice(0, 52), 10, GH.blue);
-      o += T(W - 14, ry + 23, ago(e.created_at), 10, GH.mut, 400, 'end');
+      const [line1, line2] = describe(e);
+      o += box(8, ry, W - 16, 36, c);
+      o += T(20, ry + 23, ICONS[e.type] || '•', 14, c.blue, 600);
+      o += T(38, ry + 20, trunc(line1, 42), 12, c.text, 600);
+      o += T(38, ry + 33, trunc(line2, 52), 10, c.blue);
+      o += T(W - 14, ry + 23, ago(e.created_at), 10, c.mut, 400, 'end');
     });
-    return svg(o);
+    return svg(o, c, 'recent activity');
   },
 };

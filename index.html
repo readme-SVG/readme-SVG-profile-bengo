@@ -50,14 +50,17 @@
           </div>
         </div>
         <div class="box-body">
-          <div style="display:flex;gap:8px;margin-bottom:12px;">
-            <input class="gh-input" id="uname" type="text" placeholder="github username" value="OstinUA" style="max-width:220px;"/>
+          <div class="controls">
+            <input class="gh-input" id="uname" type="text" placeholder="github username" value="OstinUA" style="max-width:220px;" autocomplete="off" spellcheck="false"/>
             <button class="btn btn-primary" onclick="load()">Load card</button>
+            <select class="gh-input" id="theme" title="card theme"></select>
+            <input class="gh-input" id="tz" type="number" min="-12" max="14" step="0.5" value="0" title="UTC offset in hours (for the active hours / weekdays slides)" style="width:72px;"/>
           </div>
           <div class="preview-area" id="preview-wrap">
             <img id="img" src="" alt="card preview"/>
             <div class="loading-overlay"><div class="spinner"></div></div>
           </div>
+          <div class="preview-error" id="preview-error" hidden></div>
           <div style="margin-top:8px;font-size:12px;color:var(--fg-subtle);">
             Currently showing: <span id="current-slide-name" style="color:var(--fg-muted);font-weight:500;">—</span>
           </div>
@@ -79,6 +82,12 @@
             <div class="code-block" id="snip-html-1"></div>
             <button class="copy-btn" id="copy-html-1" onclick="doCopy('html-1')">copy</button>
           </div>
+          <div class="field-label" style="margin-top:12px;">HTML <span style="font-weight:400;color:var(--fg-muted)">(auto light / dark)</span></div>
+          <div class="field-note">Follows the viewer's GitHub color mode</div>
+          <div class="snippet-wrap">
+            <div class="code-block" id="snip-auto-1"></div>
+            <button class="copy-btn" id="copy-auto-1" onclick="doCopy('auto-1')">copy</button>
+          </div>
         </div>
       </div>
 
@@ -97,6 +106,12 @@
             <div class="code-block" id="snip-html-2"></div>
             <button class="copy-btn" id="copy-html-2" onclick="doCopy('html-2')">copy</button>
           </div>
+          <div class="field-label" style="margin-top:12px;">HTML <span style="font-weight:400;color:var(--fg-muted)">(auto light / dark)</span></div>
+          <div class="field-note">Follows the viewer's GitHub color mode</div>
+          <div class="snippet-wrap">
+            <div class="code-block" id="snip-auto-2"></div>
+            <button class="copy-btn" id="copy-auto-2" onclick="doCopy('auto-2')">copy</button>
+          </div>
         </div>
       </div>
 
@@ -106,7 +121,10 @@
         <div class="box-body" style="padding:0;">
           <table class="param-table">
             <tr><td>?user=</td><td>GitHub username — <strong>required</strong></td></tr>
-            <tr><td>&amp;slides=</td><td>comma-separated slide ids to include, e.g. <code style="font-size:11px;background:var(--bg-inset);padding:1px 5px;border-radius:3px;">repos,stars,commits</code></td></tr>
+            <tr><td>&amp;slides=</td><td>comma-separated slide ids to include, e.g. <code class="inline">repos,stars,commits</code></td></tr>
+            <tr><td>&amp;theme=</td><td><code class="inline">dark</code> (default), <code class="inline">light</code>, <code class="inline">github_dark</code>, <code class="inline">github_light</code>, <code class="inline">dracula</code>, <code class="inline">nord</code>, <code class="inline">tokyonight</code>, <code class="inline">gruvbox</code>, <code class="inline">onedark</code>, <code class="inline">catppuccin</code>, <code class="inline">solarized_light</code></td></tr>
+            <tr><td>&amp;badge=</td><td>1–8. Each badge starts at a different point of the rotation, so several cards on one page don't repeat each other</td></tr>
+            <tr><td>&amp;tz=</td><td>UTC offset in hours for the active hours / weekdays slides, e.g. <code class="inline">3</code> or <code class="inline">-5</code></td></tr>
           </table>
         </div>
       </div>

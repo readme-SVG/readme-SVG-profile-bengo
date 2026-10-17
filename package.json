@@ -1,8 +1,15 @@
 {
   "name": "gh-card",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "GitHub profile SVG card for README embeds",
+  "private": true,
+  "scripts": {
+    "lint": "node scripts/check.js",
+    "test": "node --test test/*.test.js",
+    "dev": "node scripts/dev.js",
+    "dev:mock": "node scripts/dev.js --mock"
+  },
   "engines": {
-    "node": "20.x"
+    "node": ">=20"
   }
 }

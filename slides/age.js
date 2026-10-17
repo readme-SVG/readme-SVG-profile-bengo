@@ -1,19 +1,20 @@
-const { W, H, GH } = require('../lib/constants');
-const { T, svg } = require('../lib/svg');
+const { statCard } = require('./stat');
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 module.exports = {
   id: 'age',
-  fn: user => {
+  label: 'account age',
+  needs: [],
+  render: ({ user, c }) => {
     const created = new Date(user.created_at);
-    const yrs = new Date().getFullYear() - created.getFullYear();
-    const cx = W / 2;
-    const cy = H / 2 - 12;
-    let o = '';
-    o += `<circle cx="${cx}" cy="${cy}" r="78" fill="${GH.green}" opacity="0.04"/>`;
-    o += `<circle cx="${cx}" cy="${cy}" r="50" fill="${GH.green}" opacity="0.05"/>`;
-    o += T(cx, cy + 14, `${yrs}y`, 60, GH.text, 700, 'middle');
-    o += T(cx, cy + 36, 'on github', 13, GH.green, 600, 'middle');
-    o += T(cx, cy + 54, `since ${created.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`, 11, GH.mut, 400, 'middle');
-    return svg(o);
+    if (!Number.isFinite(created.getTime())) return statCard(c, '?', 'on github', c.green);
+    const now = new Date();
+    let months = (now.getUTCFullYear() - created.getUTCFullYear()) * 12 + (now.getUTCMonth() - created.getUTCMonth());
+    if (now.getUTCDate() < created.getUTCDate()) months -= 1;
+    months = Math.max(months, 0);
+    const big = months >= 12 ? `${Math.floor(months / 12)}y` : `${months}mo`;
+    const since = `since ${MONTHS[created.getUTCMonth()]} ${created.getUTCFullYear()}`;
+    return statCard(c, big, 'on github', c.green, since);
   },
 };
