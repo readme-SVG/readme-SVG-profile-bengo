@@ -8,6 +8,7 @@ const DAYS = 30;
 module.exports = {
   id: 'activity',
   label: 'activity chart',
+  category: 'activity',
   needs: ['events'],
   render: ({ events, c }) => {
     const today = Math.floor(Date.now() / DAY);

@@ -27,6 +27,20 @@ test('fmt formats numbers and never leaks NaN', () => {
   assert.equal(fmt(null), '0');
 });
 
+test('formatSize renders repository sizes without leaking NaN', () => {
+  const { formatSize } = require('../lib/helpers');
+  assert.equal(formatSize(0), '—');
+  assert.equal(formatSize(null), '—');
+  assert.equal(formatSize(undefined), '—');
+  assert.equal(formatSize(-5), '—');
+  assert.equal(formatSize(Infinity), '—');
+  assert.equal(formatSize('abc'), '—');
+  assert.equal(formatSize(512), '512 KB');
+  assert.equal(formatSize(1024), '1.0 MB');
+  assert.equal(formatSize(2048), '2.0 MB');
+  assert.equal(formatSize(3 * 1024 * 1024), '3.0 GB');
+});
+
 test('ago handles missing, invalid and future dates', () => {
   assert.equal(ago(null), '?');
   assert.equal(ago('not a date'), '?');

@@ -19,6 +19,7 @@ const KINDS = {
 module.exports = {
   id: 'contrib',
   label: 'contributions',
+  category: 'community',
   needs: ['events'],
   render: ({ user, events, c }) => {
     const me = String(user.login || '').toLowerCase();

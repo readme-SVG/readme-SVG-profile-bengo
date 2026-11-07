@@ -1,2 +1,7 @@
+# Tests, tooling and repository metadata are not needed at runtime.
 test/
 scripts/
+.github/
+CODE_OF_CONDUCT.md
+CONTRIBUTING.md
+SECURITY.md

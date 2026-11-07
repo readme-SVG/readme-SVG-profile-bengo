@@ -20,6 +20,7 @@ const user = {
 };
 
 const LANGS = ['JavaScript', 'TypeScript', 'Python', 'Go', 'Rust', 'Shell', 'C++', 'Jupyter Notebook'];
+const LICENSES = ['MIT', 'Apache-2.0', 'MIT', 'GPL-3.0', 'BSD-3-Clause', 'MIT', 'Apache-2.0', 'ISC'];
 
 const repos = LANGS.map((language, i) => ({
   name: `project-${i}-${language.toLowerCase().replace(/\W+/g, '-')}`,
@@ -31,6 +32,8 @@ const repos = LANGS.map((language, i) => ({
   stargazers_count: 1000 * (8 - i) + i,
   forks_count: 120 * (8 - i),
   open_issues_count: i * 3,
+  size: 1024 * (8 - i) + 250,
+  license: { spdx_id: LICENSES[i] },
   topics: ['cli', 'tooling', i % 2 ? 'web' : 'automation', `topic-${i}`],
   created_at: iso((i + 1) * 300 * DAY),
   updated_at: iso(i * DAY),

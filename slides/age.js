@@ -5,6 +5,7 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 module.exports = {
   id: 'age',
   label: 'account age',
+  category: 'profile',
   needs: [],
   render: ({ user, c }) => {
     const created = new Date(user.created_at);

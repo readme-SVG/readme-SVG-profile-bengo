@@ -14,6 +14,7 @@ const pad = h => String(h).padStart(2, '0');
 module.exports = {
   id: 'hours',
   label: 'active hours',
+  category: 'activity',
   needs: ['events'],
   render: ({ events, c, tz }) => {
     const counts = new Array(24).fill(0);

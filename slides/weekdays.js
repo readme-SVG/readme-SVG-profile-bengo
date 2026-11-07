@@ -8,6 +8,7 @@ const FULL = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
 module.exports = {
   id: 'weekdays',
   label: 'active weekdays',
+  category: 'activity',
   needs: ['events'],
   render: ({ events, c, tz }) => {
     const counts = new Array(7).fill(0);

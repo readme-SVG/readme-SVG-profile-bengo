@@ -1,4 +1,7 @@
-const { W, getTheme } = require('../lib/constants');
+const {
+  W, getTheme, ROTATION_MS, MAX_BADGES,
+  MIN_INTERVAL_MIN, MAX_INTERVAL_MIN, DEFAULT_INTERVAL_MIN,
+} = require('../lib/constants');
 const { esc, trunc } = require('../lib/helpers');
 const { loadData } = require('../lib/data');
 const ALL_SLIDES = require('../slides');
@@ -6,12 +9,15 @@ const ALL_SLIDES = require('../slides');
 // GitHub logins: letters, digits, hyphens (and "_" for managed users), max 39
 // chars, plus "[bot]" apps. Anything else could point the API path elsewhere.
 const USER_RE = /^[A-Za-z0-9][A-Za-z0-9_-]{0,38}(?:\[bot\])?$/;
-const BUCKET_MS = 10 * 60 * 1000;
 // Vercel kills the function at maxDuration (10s); answer well before that.
 const BUDGET_MS = 8000;
-const MAX_BADGES = 8;
 const FALLBACK_ID = 'profile';
 const ERROR_CACHE = 'public, s-maxage=60, stale-while-revalidate=30';
+// A pinned slide never rotates, so it only needs to expire when the underlying
+// GitHub data cache does (5 minutes) rather than at the rotation boundary.
+const PINNED_CACHE = 'public, s-maxage=300, stale-while-revalidate=60';
+// Bound pathological query strings before splitting them into id sets.
+const MAX_SLIDES_PARAM = 2000;
 
 const BY_ID = new Map(ALL_SLIDES.map(s => [s.id, s]));
 
@@ -21,7 +27,8 @@ function param(q, key) {
 }
 
 function enabledSlides(slidesParam) {
-  const ids = new Set(slidesParam.split(',').map(s => s.trim().toLowerCase()).filter(Boolean));
+  const ids = new Set(String(slidesParam || '').slice(0, MAX_SLIDES_PARAM)
+    .split(',').map(s => s.trim().toLowerCase()).filter(Boolean));
   if (!ids.size) return ALL_SLIDES;
   const list = ALL_SLIDES.filter(s => ids.has(s.id));
   return list.length ? list : ALL_SLIDES;
@@ -41,10 +48,19 @@ function badgeOffset(badge, len) {
   return Math.floor(f * len);
 }
 
-function pickSlide(enabled, overrideIdx, badge, now) {
+function pickSlide(enabled, overrideIdx, badge, now, intervalMs = ROTATION_MS) {
   if (Number.isInteger(overrideIdx) && overrideIdx >= 0 && overrideIdx < enabled.length) return enabled[overrideIdx];
-  const bucket = Math.floor(now / BUCKET_MS);
+  const period = Number.isFinite(intervalMs) && intervalMs > 0 ? intervalMs : ROTATION_MS;
+  const bucket = Math.floor(now / period);
   return enabled[(bucket + badgeOffset(badge, enabled.length)) % enabled.length];
+}
+
+// Rotation period in minutes. Invalid or out-of-range values silently revert to
+// the default so a typo can never produce a zero-length cache or a divide-by-0.
+function parseInterval(raw) {
+  const v = Number.parseFloat(String(raw));
+  if (!Number.isFinite(v) || v < MIN_INTERVAL_MIN) return DEFAULT_INTERVAL_MIN;
+  return Math.round(Math.min(v, MAX_INTERVAL_MIN));
 }
 
 function parseTz(raw) {
@@ -58,10 +74,15 @@ function describeError(err) {
     case 'not_found': return ['GitHub user not found', 'check the ?user= value'];
     case 'rate_limit': return ['GitHub API rate limit exceeded', 'set GITHUB_TOKEN env var to raise rate limit'];
     case 'auth': return ['GitHub rejected the token (401)', 'check the GITHUB_TOKEN env var'];
+    case 'forbidden': return ['GitHub API access forbidden (403)', 'check the GITHUB_TOKEN permissions'];
+    case 'invalid': return ['GitHub rejected the query (422)', 'check the ?user= value'];
     case 'timeout': return ['GitHub API timed out', 'try again in a minute'];
     case 'network': return ['could not reach the GitHub API', 'try again in a minute'];
+    case 'bad_response': return ['GitHub returned an invalid response', 'try again in a minute'];
+    case 'too_large': return ['GitHub response exceeded the size limit', 'try again in a minute'];
+    case 'empty': return ['no public data available for this slide', 'try another slide'];
     case 'server': return [`GitHub API error ${err.status}`, 'GitHub is having trouble, try again later'];
-    default: return [String((err && err.message) || err || 'unknown error'), 'set GITHUB_TOKEN env var to raise rate limit'];
+    default: return [String((err && err.message) || err || 'unknown error'), 'try again in a minute'];
   }
 }
 
@@ -75,10 +96,11 @@ function errSVG(c, msg, hint) {
     + '</svg>';
 }
 
-// Cache until the current 10-minute rotation bucket ends, so the CDN flips to
-// the next slide on time instead of serving the old one for up to 10 more minutes.
-function successCache(now) {
-  const left = Math.max(Math.ceil((BUCKET_MS - (now % BUCKET_MS)) / 1000), 1);
+// Cache until the current rotation bucket ends, so the CDN flips to the next
+// slide on time instead of serving the old one for another full period.
+function successCache(now, intervalMs = ROTATION_MS) {
+  const period = Number.isFinite(intervalMs) && intervalMs > 0 ? intervalMs : ROTATION_MS;
+  const left = Math.max(Math.ceil((period - (now % period)) / 1000), 1);
   return `public, s-maxage=${left}, stale-while-revalidate=60`;
 }
 
@@ -103,7 +125,10 @@ async function render(req, res) {
   const overrideIdx = isPreview ? Number(overrideRaw) : undefined;
   const badgeRaw = Number(param(q, 'badge'));
   const badge = Number.isInteger(badgeRaw) && badgeRaw >= 1 && badgeRaw <= MAX_BADGES ? badgeRaw : 1;
-  const slide = pickSlide(enabled, overrideIdx, badge, now);
+  const intervalMs = parseInterval(param(q, 'interval')) * 60000;
+  const pinned = BY_ID.get(param(q, 'slide').trim().toLowerCase());
+  const isPinned = !isPreview && !!pinned;
+  const slide = isPinned ? pinned : pickSlide(enabled, overrideIdx, badge, now, intervalMs);
 
   let data;
   try {
@@ -120,7 +145,7 @@ async function render(req, res) {
   const missing = slide.needs.filter(n => data.failed.has(n));
   if (!missing.length) {
     try {
-      return send(slide.render(ctx), successCache(now));
+      return send(slide.render(ctx), isPinned ? PINNED_CACHE : successCache(now, intervalMs));
     } catch (err) {
       console.error(`[gh-card] slide "${slide.id}" failed to render`, err);
     }
@@ -145,7 +170,7 @@ module.exports = async function handler(req, res) {
   try {
     return await render(req, res);
   } catch (err) {
-    // last line of defence: always answer with an SVG
+    // Last line of defence: always answer with an SVG.
     console.error('[gh-card] unexpected error', err);
     res.setHeader('Cache-Control', 'no-store');
     return res.status(200).send(errSVG(getTheme(''), 'internal error while rendering the card', 'try again in a minute'));
@@ -156,4 +181,5 @@ module.exports.pickSlide = pickSlide;
 module.exports.badgeOffset = badgeOffset;
 module.exports.enabledSlides = enabledSlides;
 module.exports.parseTz = parseTz;
+module.exports.parseInterval = parseInterval;
 module.exports.USER_RE = USER_RE;

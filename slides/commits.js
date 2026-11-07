@@ -6,6 +6,7 @@ const { emptyState } = require('./common');
 module.exports = {
   id: 'commits',
   label: 'random commits',
+  category: 'activity',
   needs: ['commits'],
   render: ({ commits, c }) => {
     const picks = shuffle(commits).slice(0, 2);

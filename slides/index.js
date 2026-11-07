@@ -1,5 +1,8 @@
-// Rotation order matters: indices are used by `_slide=` and by the preview UI
-// (app.js keeps the same order). Append new slides at the end.
+// Rotation order matters: `index` is exposed through /api/catalog and used by
+// `_slide=` and the preview UI. Append new slides at the end so existing embed
+// URLs keep resolving to the same card. Each module owns its id, label,
+// category, data requirements and renderer; `lib/catalog.js` derives the public
+// metadata from this registry, so there is no second list to maintain.
 module.exports = [
   require('./repos'),
   require('./stars'),
@@ -29,4 +32,18 @@ module.exports = [
   require('./pullrequests'),
   require('./contrib'),
   require('./gists'),
+
+  // Additional variants (grouped by category in the preview UI).
+  require('./milestones'),
+  require('./quote'),
+  require('./followratio'),
+  require('./biggest'),
+  require('./oldest'),
+  require('./licenses'),
+  require('./langtop'),
+  require('./streak'),
+  require('./heatmap'),
+  require('./breakdown'),
+  require('./issuerate'),
+  require('./prmerge'),
 ];

@@ -46,6 +46,7 @@ function describe(e) {
 module.exports = {
   id: 'events',
   label: 'recent events',
+  category: 'activity',
   needs: ['events'],
   describe,
   render: ({ events, c }) => {

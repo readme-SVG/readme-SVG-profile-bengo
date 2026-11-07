@@ -3,6 +3,9 @@
   "functions": {
     "api/card.js": {
       "maxDuration": 10
+    },
+    "api/catalog.js": {
+      "maxDuration": 10
     }
   },
   "headers": [
@@ -15,7 +18,11 @@
         },
         {
           "key": "Access-Control-Allow-Methods",
-          "value": "GET"
+          "value": "GET, HEAD"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
         }
       ]
     }

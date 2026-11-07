@@ -5,6 +5,7 @@ const { fmt, trunc, wrap, esc } = require('../lib/helpers');
 module.exports = {
   id: 'profile',
   label: 'profile card',
+  category: 'profile',
   // the avatar is optional: without it the card shows an initial instead
   needs: ['avatar'],
   render: ({ user, avatar, c }) => {

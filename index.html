@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="Generate rotating GitHub profile SVG cards for README embeds: pick slides by category, preview themes and copy ready-to-paste snippets.">
 <title>gh-card · GitHub Profile Cards</title>
 <link rel="stylesheet" href="/styles.css">
 </head>
@@ -15,117 +17,101 @@
     </svg>
   </div>
   <div class="header-crumb">
-    <a href="https://github.com/OstinUA" target="_blank">OstinUA</a>
+    <a href="https://github.com/OstinUA" target="_blank" rel="noopener">OstinUA</a>
     <span class="sep">/</span>
-    <a href="https://github.com/readme-SVG/readme-SVG-profile-bengo" target="_blank">readme-profile-bengo</a>
+    <a href="https://github.com/readme-SVG/readme-SVG-profile-bengo" target="_blank" rel="noopener">readme-profile-bengo</a>
   </div>
+  <div class="header-spacer"></div>
+  <a class="header-link" href="/api/catalog" target="_blank" rel="noopener">API catalog ↗</a>
 </div>
 
 <div class="container">
 
   <div class="repo-header">
-    <svg class="repo-icon" viewBox="0 0 16 16"><path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8V1.5Z"/></svg>
+    <svg class="repo-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8V1.5Z"/></svg>
     <div class="repo-name-link">
-      <a href="https://github.com/OstinUA" target="_blank">OstinUA</a>
+      <a href="https://github.com/OstinUA" target="_blank" rel="noopener">OstinUA</a>
       <span class="sep">/</span>
-      <a href="https://github.com/readme-SVG/readme-SVG-profile-bengo" target="_blank">readme-profile-bengo</a>
+      <a href="https://github.com/readme-SVG/readme-SVG-profile-bengo" target="_blank" rel="noopener">readme-profile-bengo</a>
       <span class="badge">Public</span>
     </div>
   </div>
 
+  <div class="banner banner-error" id="catalog-error" hidden>
+    <div>
+      <strong>Catalog unavailable</strong>
+      <p id="catalog-error-message">The slide list could not be loaded.</p>
+    </div>
+    <button class="btn btn-default btn-sm" id="retry-catalog" type="button">retry</button>
+  </div>
+
+  <noscript><div class="banner banner-warn">This preview tool needs JavaScript. The SVG API itself works without it.</div></noscript>
+
   <div class="layout">
 
     <!-- ── MAIN ── -->
-    <div>
+    <div class="main">
 
-      <!-- preview -->
       <div class="box">
         <div class="box-header">
           <span>Preview</span>
-          <div style="display:flex;gap:6px;align-items:center;">
-            <button class="btn btn-default btn-sm" onclick="refresh()">
-              <svg height="13" viewBox="0 0 16 16" width="13" style="fill:currentColor"><path d="M1.705 8.005a.75.75 0 0 1 .834.656 5.5 5.5 0 0 0 9.592 2.97l-1.204-1.204a.25.25 0 0 1 .177-.427h3.646a.25.25 0 0 1 .25.25v3.646a.25.25 0 0 1-.427.177l-1.38-1.38A7.002 7.002 0 0 1 1.05 8.84a.75.75 0 0 1 .656-.834ZM8 2.5a5.487 5.487 0 0 0-4.131 1.869l1.204 1.204A.25.25 0 0 1 4.896 6H1.25A.25.25 0 0 1 1 5.75V2.104a.25.25 0 0 1 .427-.177l1.38 1.38A7.002 7.002 0 0 1 14.95 7.16a.75.75 0 0 1-1.49.178A5.5 5.5 0 0 0 8 2.5Z"/></svg>
-              next slide
-            </button>
+          <div class="box-actions">
+            <button class="btn btn-default btn-sm" id="prev-slide" type="button" title="Previous slide (←)">‹ prev</button>
+            <button class="btn btn-default btn-sm" id="next-slide" type="button" title="Next slide (→)">next slide ›</button>
+            <a class="btn btn-default btn-sm" id="open-svg" href="#" target="_blank" rel="noopener">open SVG ↗</a>
           </div>
         </div>
         <div class="box-body">
           <div class="controls">
-            <input class="gh-input" id="uname" type="text" placeholder="github username" value="OstinUA" style="max-width:220px;" autocomplete="off" spellcheck="false"/>
-            <button class="btn btn-primary" onclick="load()">Load card</button>
-            <select class="gh-input" id="theme" title="card theme"></select>
-            <input class="gh-input" id="tz" type="number" min="-12" max="14" step="0.5" value="0" title="UTC offset in hours (for the active hours / weekdays slides)" style="width:72px;"/>
+            <label class="field">
+              <span class="control-label">GitHub username</span>
+              <input class="gh-input" id="uname" type="text" placeholder="github username" value="OstinUA" autocomplete="off" spellcheck="false"/>
+            </label>
+            <button class="btn btn-primary" id="load" type="button">Load card</button>
+            <label class="field">
+              <span class="control-label">Theme</span>
+              <select class="gh-input" id="theme"></select>
+            </label>
+            <label class="field field-narrow">
+              <span class="control-label">UTC offset</span>
+              <input class="gh-input" id="tz" type="number" min="-12" max="14" step="0.5" value="0" title="UTC offset in hours for the activity time charts"/>
+            </label>
+            <label class="field field-narrow">
+              <span class="control-label">Rotation, min</span>
+              <input class="gh-input" id="interval" type="number" min="1" max="60" step="1" value="10" title="How often the card changes slide, in minutes"/>
+            </label>
+          </div>
+          <div class="controls controls-secondary">
+            <label class="check">
+              <input type="checkbox" id="pin"/>
+              <span>Pin previewed slide in embeds</span>
+            </label>
+            <span class="hint" id="pin-note"></span>
+            <span class="controls-spacer"></span>
+            <button class="btn btn-default btn-sm" id="copy-link" type="button">copy setup link</button>
+            <button class="btn btn-default btn-sm" id="reset" type="button">reset</button>
           </div>
           <div class="preview-area" id="preview-wrap">
-            <img id="img" src="" alt="card preview"/>
+            <img id="img" src="" alt="Card preview" decoding="async"/>
             <div class="loading-overlay"><div class="spinner"></div></div>
           </div>
           <div class="preview-error" id="preview-error" hidden></div>
-          <div style="margin-top:8px;font-size:12px;color:var(--fg-subtle);">
-            Currently showing: <span id="current-slide-name" style="color:var(--fg-muted);font-weight:500;">—</span>
+          <div class="preview-meta">
+            <div>Currently showing: <strong id="current-slide-name">—</strong> <span class="hint" id="slide-counter"></span></div>
+            <div class="status" id="status" role="status" aria-live="polite"></div>
           </div>
         </div>
       </div>
 
-      <!-- embed 1 -->
-      <div class="box">
-        <div class="box-header">Embed in README 1</div>
-        <div class="box-body">
-          <div class="field-label">Markdown</div>
-          <div class="field-note">Paste into your README.md</div>
-          <div class="snippet-wrap">
-            <div class="code-block" id="snip-md-1"></div>
-            <button class="copy-btn" id="copy-md-1" onclick="doCopy('md-1')">copy</button>
-          </div>
-          <div class="field-label" style="margin-top:12px;">HTML <span style="font-weight:400;color:var(--fg-muted)">(width control)</span></div>
-          <div class="snippet-wrap">
-            <div class="code-block" id="snip-html-1"></div>
-            <button class="copy-btn" id="copy-html-1" onclick="doCopy('html-1')">copy</button>
-          </div>
-          <div class="field-label" style="margin-top:12px;">HTML <span style="font-weight:400;color:var(--fg-muted)">(auto light / dark)</span></div>
-          <div class="field-note">Follows the viewer's GitHub color mode</div>
-          <div class="snippet-wrap">
-            <div class="code-block" id="snip-auto-1"></div>
-            <button class="copy-btn" id="copy-auto-1" onclick="doCopy('auto-1')">copy</button>
-          </div>
-        </div>
-      </div>
+      <div id="embed-boxes"></div>
 
-      <!-- embed 2 -->
       <div class="box">
-        <div class="box-header">Embed in README 2</div>
-        <div class="box-body">
-          <div class="field-label">Markdown</div>
-          <div class="field-note">Paste into your README.md</div>
-          <div class="snippet-wrap">
-            <div class="code-block" id="snip-md-2"></div>
-            <button class="copy-btn" id="copy-md-2" onclick="doCopy('md-2')">copy</button>
-          </div>
-          <div class="field-label" style="margin-top:12px;">HTML <span style="font-weight:400;color:var(--fg-muted)">(width control)</span></div>
-          <div class="snippet-wrap">
-            <div class="code-block" id="snip-html-2"></div>
-            <button class="copy-btn" id="copy-html-2" onclick="doCopy('html-2')">copy</button>
-          </div>
-          <div class="field-label" style="margin-top:12px;">HTML <span style="font-weight:400;color:var(--fg-muted)">(auto light / dark)</span></div>
-          <div class="field-note">Follows the viewer's GitHub color mode</div>
-          <div class="snippet-wrap">
-            <div class="code-block" id="snip-auto-2"></div>
-            <button class="copy-btn" id="copy-auto-2" onclick="doCopy('auto-2')">copy</button>
-          </div>
+        <div class="box-header">
+          <span>Query parameters</span>
+          <span class="box-sub" id="param-summary"></span>
         </div>
-      </div>
-
-      <!-- params -->
-      <div class="box">
-        <div class="box-header">Query parameters</div>
-        <div class="box-body" style="padding:0;">
-          <table class="param-table">
-            <tr><td>?user=</td><td>GitHub username — <strong>required</strong></td></tr>
-            <tr><td>&amp;slides=</td><td>comma-separated slide ids to include, e.g. <code class="inline">repos,stars,commits</code></td></tr>
-            <tr><td>&amp;theme=</td><td><code class="inline">dark</code> (default), <code class="inline">light</code>, <code class="inline">github_dark</code>, <code class="inline">github_light</code>, <code class="inline">dracula</code>, <code class="inline">nord</code>, <code class="inline">tokyonight</code>, <code class="inline">gruvbox</code>, <code class="inline">onedark</code>, <code class="inline">catppuccin</code>, <code class="inline">solarized_light</code></td></tr>
-            <tr><td>&amp;badge=</td><td>1–8. Each badge starts at a different point of the rotation, so several cards on one page don't repeat each other</td></tr>
-            <tr><td>&amp;tz=</td><td>UTC offset in hours for the active hours / weekdays slides, e.g. <code class="inline">3</code> or <code class="inline">-5</code></td></tr>
-          </table>
+        <div class="box-body box-body-flush">
+          <table class="param-table"><tbody id="param-body"></tbody></table>
         </div>
       </div>
 
@@ -134,34 +120,52 @@
     <!-- ── SIDEBAR ── -->
     <div class="sidebar">
 
-      <!-- slide selector -->
       <div class="box">
         <div class="box-header">
-          <span>Slides <span id="enabled-count" style="font-weight:400;color:var(--fg-muted);font-size:13px;"></span></span>
-          <button class="btn btn-default btn-sm" onclick="toggleAll()">toggle all</button>
+          <span>Slides <span class="box-sub" id="enabled-count"></span></span>
+          <div class="box-actions">
+            <button class="btn btn-default btn-sm" id="select-all" type="button" title="Enable every slide for both embeds">all</button>
+            <button class="btn btn-default btn-sm" id="select-none" type="button" title="Disable every slide for both embeds">none</button>
+          </div>
+        </div>
+        <div class="slide-toolbar">
+          <input class="gh-input" id="slide-filter" type="search" placeholder="Filter slides…" autocomplete="off" spellcheck="false" aria-label="Filter slides by name or id"/>
+          <span class="hint" id="filter-count"></span>
         </div>
         <div class="slide-col-header">
           <span class="slide-col-spacer"></span>
           <span class="slide-col-label">1</span>
           <span class="slide-col-label">2</span>
         </div>
-        <div id="slide-list"></div>
+        <div id="slide-groups"><div class="boot-note" id="boot-note">Loading catalog…</div></div>
+        <div class="empty-note" id="no-matches" hidden>No slides match this filter.</div>
       </div>
 
-      <!-- rate limits -->
+      <div class="box">
+        <div class="box-header">Shortcuts &amp; tips</div>
+        <div class="box-body tips">
+          <p><kbd>←</kbd> / <kbd>→</kbd> step through slides, <kbd>Enter</kbd> reloads the card.</p>
+          <p>Click a category header to collapse it; its switches toggle the whole group for one embed.</p>
+          <p>Your configuration is saved locally and encoded in the address bar, so the URL is shareable.</p>
+        </div>
+      </div>
+
       <div class="box">
         <div class="box-header">Rate limits</div>
-        <div class="box-body">
-          <p style="font-size:13px;color:var(--fg-muted);line-height:1.7;">
-            Without token: <strong style="color:var(--fg);">60 req/hr</strong> per IP.<br>
-            With <code style="font-size:11px;background:var(--bg-inset);padding:1px 5px;border-radius:3px;">GITHUB_TOKEN</code>: <strong style="color:var(--fg);">5000 req/hr</strong>.<br>
-            Add it in Vercel → Settings → Environment Variables.
-          </p>
+        <div class="box-body tips">
+          <p>Without token: <strong>60 req/hr</strong> per IP.<br>
+          With <code>GITHUB_TOKEN</code>: <strong>5000 req/hr</strong>.<br>
+          Add it in Vercel → Settings → Environment Variables.</p>
         </div>
       </div>
 
     </div>
   </div>
+
+  <footer class="footer">
+    <span>gh-card · SVG profile cards for README embeds</span>
+    <a href="https://github.com/readme-SVG/readme-SVG-profile-bengo" target="_blank" rel="noopener">View source ↗</a>
+  </footer>
 </div>
 
 <script src="/app.js"></script>

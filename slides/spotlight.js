@@ -6,6 +6,7 @@ const { emptyState } = require('./common');
 module.exports = {
   id: 'spotlight',
   label: 'spotlight repo',
+  category: 'repositories',
   needs: ['repos'],
   render: ({ repos, c }) => {
     const r = shuffle(repos.filter(x => !x.fork && x.description))[0];

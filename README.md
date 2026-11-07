@@ -15,7 +15,14 @@
 
 - [Features](#features)
 - [Slides](#slides)
+  - [Profile & Account](#profile--account)
+  - [Statistics](#statistics)
+  - [Repositories](#repositories)
+  - [Languages & Topics](#languages--topics)
+  - [Activity](#activity)
+  - [Community](#community)
 - [Themes](#themes)
+- [API Catalog](#api-catalog)
 - [Tech Stack](#tech-stack)
 - [Technical Notes](#technical-notes)
   - [Project Structure](#project-structure)
@@ -32,12 +39,13 @@
 
 ## Features
 
-- 28 slide types for GitHub profiles: stats, profile card, language bar / list / donut, activity charts, top repos, commits, issues, pull requests, topics and more (see [Slides](#slides)).
-- 11 color themes, including transparent `dark` / `light` and an auto light/dark `<picture>` snippet (see [Themes](#themes)).
-- Slide rotation based on 10-minute time buckets; the CDN cache expires exactly when the slide changes.
+- **40 slide types in 6 categories** — profile, statistics, repositories, languages & topics, activity and community (see [Slides](#slides)). The preview UI groups them into collapsible categories with a search filter, so picking a card stays easy as the catalog grows.
+- **15 color themes**, including transparent `dark` / `light`, grouped into dark and light `<optgroup>` sections in the UI (see [Themes](#themes)).
+- **Discoverable configuration** via `GET /api/catalog`, the single source of truth for slides, categories, themes, dimensions and rotation defaults (see [API Catalog](#api-catalog)).
+- Slide rotation based on configurable time buckets (`interval=`, 1–60 minutes); the CDN cache expires exactly when the slide changes.
+- **Pin a single card** with `slide=<id>` to disable rotation, or filter the rotation with `slides=`.
 - Several embeds on one page (`badge=1..8`) start at different points of the rotation.
-- Slide filtering via query params: include only specific slide IDs in render output.
-- Web UI preview tool for card generation, slide toggling, themes, and copy-paste embed snippets.
+- Web UI preview tool with live card preview, slide search, per-category toggles, theme selection, keyboard navigation, locally persisted settings and a shareable setup URL.
 - Supports Markdown, HTML and auto light/dark HTML embed snippets for README integration.
 - Optional GitHub token support to jump from `60 req/hr` to `5000 req/hr` rate limit tier.
 - Serverless-first deployment via Vercel with function-level timeout config.
@@ -51,50 +59,90 @@
 
 ## Slides
 
+Slides are grouped by category. Every id can be used in `?slides=`, `?slide=` and in the preview UI.
+
+### Profile & Account
+
+| ID | What it shows | GitHub data used |
+|---|---|---|
+| `age` | Account age and join date | profile |
+| `profile` | Avatar, name, bio, location and key counts | profile, avatar |
+| `milestones` | Six achievement thresholds for repos, stars, forks and followers | profile, repos |
+| `quote` | Typographic card with the profile bio | profile |
+
+### Statistics
+
 | ID | What it shows | GitHub data used |
 |---|---|---|
 | `repos` | Public repository count | profile |
 | `stars` | Total stars earned | repos |
 | `followers` / `following` | Follower / following counts | profile |
-| `langbar` | Stacked language bar with top 6 languages | repos |
+| `avgstars` | Average stars per original repository | repos |
+| `forks` | Total forks received | repos |
+| `overview` | 6-tile grid: stars, forks, followers, repos, issues, gists | repos |
+| `gists` | Public gist count | profile |
+| `followratio` | Followers per followed account | profile |
+
+### Repositories
+
+| ID | What it shows | GitHub data used |
+|---|---|---|
 | `toprepos` | Top 3 repositories by stars | repos |
+| `spotlight` | A random repository with description, stats and topics | repos |
+| `forked` | Top 3 repositories by forks | repos |
+| `recent` | Recently pushed repositories | repos |
+| `biggest` | Largest repositories by reported size | repos |
+| `oldest` | Longest-running repositories by creation date | repos |
+
+### Languages & Topics
+
+| ID | What it shows | GitHub data used |
+|---|---|---|
+| `langbar` | Stacked language bar with top 6 languages | repos |
+| `langlist` | Top 5 languages as percentage bars | repos |
+| `langdonut` | Language donut chart | repos |
+| `topics` | Most used repository topics | repos |
+| `licenses` | License distribution across repositories | repos |
+| `langtop` | Primary language and its share of repositories | repos |
+
+### Activity
+
+| ID | What it shows | GitHub data used |
+|---|---|---|
 | `commits` | Two random recent commits | repos, commits, events |
 | `events` | Last 4 public events | events |
-| `spotlight` | A random repository with description, stats and topics | repos |
-| `langlist` | Top 5 languages as bars | repos |
-| `forked` | Top 3 repositories by forks | repos |
-| `avgstars` | Average stars per original repository | repos |
-| `age` | Account age | profile |
-| `forks` | Total forks received | repos |
-| `issues` | Open issues across own repositories | repos |
-| `latestissues` | Latest open issues authored by the user | search |
-| `closedissues` | Latest closed issues authored by the user | search |
-| `profile` | Avatar, name, bio, location and key counts | profile, avatar |
-| `overview` | 6-tile stats grid: stars, forks, followers, repos, issues, gists | repos |
 | `activity` | Public events per day over the last 30 days | events |
 | `hours` | Activity by hour of day, with a "night owl" / "early bird" label | events |
 | `weekdays` | Activity by day of week | events |
-| `langdonut` | Language donut chart | repos |
-| `topics` | Most used repository topics | repos |
-| `recent` | Recently pushed repositories | repos |
-| `pullrequests` | Latest pull requests with open / draft / merged / closed state | search |
+| `streak` | Current and best consecutive-day activity streak | events |
+| `heatmap` | 20-week contribution-style activity calendar | events |
+| `breakdown` | Share of pushes, pull requests, issues, stars and other events | events |
+
+### Community
+
+| ID | What it shows | GitHub data used |
+|---|---|---|
+| `issues` | Open issues across own repositories | repos |
+| `latestissues` | Latest open issues authored by the user | search |
+| `closedissues` | Latest closed issues authored by the user | search |
+| `pullrequests` | Latest PRs with open / draft / merged / closed state | search |
 | `contrib` | Other people's repositories the user recently contributed to | events |
-| `gists` | Public gist count | profile |
+| `issuerate` | Share of recent authored issues that are closed | search |
+| `prmerge` | Share of recent authored PRs that were merged | search |
 
 > [!NOTE]
-> `activity`, `hours`, `weekdays`, `events` and `contrib` use the public events API, which only covers recent public activity (up to the last 100 events). `hours` and `weekdays` use UTC unless you pass `tz=`.
+> `activity`, `hours`, `weekdays`, `streak`, `heatmap`, `breakdown`, `events` and `contrib` use the public events API, which only covers recent public activity (up to the last 100 events). Time-based slides use UTC unless you pass `tz=`.
 
 ## Themes
 
 Pass `theme=<name>`:
 
-| Theme | Background |
+| Group | Themes |
 |---|---|
-| `dark` (default) | transparent, light text |
-| `light` | transparent, dark text |
-| `github_dark`, `github_light` | solid GitHub colors |
-| `dracula`, `nord`, `tokyonight`, `gruvbox`, `onedark`, `catppuccin` | solid dark |
-| `solarized_light` | solid light |
+| Dark, transparent | `dark` (default) |
+| Light, transparent | `light` |
+| Dark, solid | `github_dark`, `dracula`, `nord`, `tokyonight`, `gruvbox`, `onedark`, `catppuccin`, `monokai`, `rose_pine`, `solarized_dark` |
+| Light, solid | `github_light`, `solarized_light`, `catppuccin_latte` |
 
 Unknown theme names fall back to `dark`. To follow the viewer's GitHub color mode, use a `<picture>` element (the preview UI generates it for you):
 
@@ -108,15 +156,25 @@ Unknown theme names fall back to `dark`. To follow the viewer's GitHub color mod
 > [!TIP]
 > If you are embedding this in a public profile README, always use a tokenized deployment to avoid rate-limit blowups during traffic spikes.
 
+## API Catalog
+
+`GET /api/catalog` returns the full configuration as JSON. The preview UI and third-party integrations consume this endpoint instead of hard-coding any registry, so a new slide or theme added on the server is immediately available everywhere.
+
+```bash
+curl "https://your-domain.vercel.app/api/catalog"
+```
+
+The response contains `dimensions`, `rotation` (default/min/max minutes), `badges`, `defaults`, an ordered `categories` array, `slides` (`id`, `label`, `category`, `needs`, `index`) and `themes` (`id`, `label`, `scheme`). It is CDN-cached for one hour, supports `HEAD` and conditional requests via `ETag`, and is CORS-enabled.
+
 ## Tech Stack
 
 - **Runtime**: Node.js `>=20` (no runtime dependencies).
-- **Serverless API**: Vercel function (`api/card.js`).
-- **Frontend**: Vanilla HTML/CSS/JS (`index.html`, `styles.css`, `app.js`).
+- **Serverless API**: Vercel functions (`api/card.js`, `api/catalog.js`).
+- **Frontend**: Vanilla HTML/CSS/JS (`index.html`, `styles.css`, `app.js`), driven by the catalog endpoint.
 - **GitHub Integration**: GitHub REST API (`fetch` + caching/retrying wrapper).
 - **Tests**: Node's built-in test runner (`node:test`), no extra packages.
 - **Automation Script**: Python (`trigger action/trigger_action.py`) with `PyGithub`, `requests`, `python-dotenv`.
-- **CI/CD**: GitHub Actions workflow for AI-assisted issue generation.
+- **CI/CD**: GitHub Actions workflows for lint/tests, label sync, SAST, scorecard and AI-assisted issue generation.
 
 ## Technical Notes
 
@@ -125,9 +183,11 @@ Unknown theme names fall back to `dark`. To follow the viewer's GitHub color mod
 ```txt
 .
 ├── api/
-│   └── card.js                # SVG card API handler
+│   ├── card.js                # SVG card API handler
+│   └── catalog.js             # JSON catalog of slides / themes / categories
 ├── lib/
-│   ├── constants.js           # Dimensions, language colors, themes
+│   ├── catalog.js             # Single source of truth for public configuration
+│   ├── constants.js           # Dimensions, language colors, themes, timing
 │   ├── data.js                # Loads only the data a slide needs
 │   ├── github.js              # GitHub REST client (timeouts, retries, cache, ETags)
 │   ├── helpers.js             # String/number/XML-safe helpers
@@ -136,10 +196,8 @@ Unknown theme names fall back to `dark`. To follow the viewer's GitHub color mod
 ├── scripts/
 │   ├── check.js               # Syntax check for all JS files (npm run lint)
 │   └── dev.js                 # Local server without the Vercel CLI
-├── test/                      # node:test suite and fixtures
-├── .github/workflows/
-│   ├── ai-issue.yml           # AI issue automation workflow
-│   └── lint.yml               # Lint + tests on pull requests
+├── test/                      # node:test suite, fixtures and XML validator
+├── .github/workflows/         # CI, SAST, scorecard and automation workflows
 ├── index.html                 # Preview and embed UI
 ├── app.js                     # Frontend logic for preview/snippets
 ├── styles.css                 # UI styling
@@ -152,13 +210,14 @@ Unknown theme names fall back to `dark`. To follow the viewer's GitHub color mod
 
 ### Key Design Decisions
 
+- **Single source of truth**: each slide module owns `id`, `label`, `category`, `needs` and `render`; `lib/constants.js` owns palettes and timing. `lib/catalog.js` derives the public catalog from them, `api/catalog.js` publishes it, and the UI builds itself from the response. There is no second list to keep in sync.
 - **SVG-first output contract**: API returns `image/svg+xml` in both success and error paths, so embeds never hard-fail as broken JSON.
-- **Cache-aware dynamic behavior**: non-preview requests map to a deterministic 10-minute bucket and are CDN-cached until that bucket ends (`s-maxage` = seconds left), so the slide flips on time.
+- **Cache-aware dynamic behavior**: non-preview requests map to a deterministic rotation bucket and are CDN-cached until that bucket ends (`s-maxage` = seconds left), so the slide flips on time. `interval=` changes both the rotation and the cache lifetime together. Pinned cards (`slide=`) use a fixed 5-minute cache instead.
 - **Data on demand**: each slide declares the GitHub resources it `needs`; the handler picks the slide first and fetches only those. Only the user profile is required, every other resource fails soft.
 - **Resilient GitHub client**: per-request timeouts bounded by an overall deadline, one retry for network/5xx errors, in-memory cache with ETag revalidation and stale-if-error, de-duplicated concurrent requests. The token is only ever sent to `api.github.com`.
 - **Graceful degradation**: if a slide's data is unavailable or a slide throws, README viewers get the profile card (cached for 60s so it recovers quickly); preview requests (`_slide=`) show the exact error instead.
-- **Composable slide registry**: all slide modules are registered through `slides/index.js` with `id`, `label`, `needs` and `render`, making extension straightforward.
-- **Zero-framework frontend**: keeps preview page lightweight, dependency-free, and portable.
+- **Composable slide registry**: all slide modules are registered through `slides/index.js`; shared geometry lives in `slides/common.js` and `slides/stat.js` so new cards stay consistent.
+- **Zero-framework frontend**: keeps the preview page lightweight, dependency-free and portable. State is encapsulated in one IIFE; events are delegated; user-provided strings are written with `textContent`.
 
 > [!IMPORTANT]
 > The API requires `?user=<github_username>`. Without it, it returns an SVG error card intentionally.
@@ -212,22 +271,25 @@ npm test       # unit + integration tests (GitHub is mocked, no network needed)
 The tests cover:
 
 - Every slide in every theme with full, empty, single-item and hostile data (control characters, `<script>`, emoji, CJK, `null`s, wrong types), checking the output is well-formed SVG with no `NaN` / `undefined`.
-- The handler: input validation, fetching only what a slide needs, rate limits, 404s, fallbacks, cache headers, badge offsets, pagination, and that the token never leaves `api.github.com`.
+- The catalog endpoint: payload shape, JSON headers, `HEAD`, `ETag`/304, slide ordering and category coverage.
+- Catalog integrity: registry consistency, category validity and absence of stale UI flags; that the UI is catalog-driven rather than duplicating registries.
+- The handler: input validation, fetching only what a slide needs, rate limits, 404s, fallbacks, cache headers, badge offsets, pagination, `slide=` pinning, `interval=` rotation, and that the token never leaves `api.github.com`.
 - The GitHub client: cache, request de-duplication, ETag revalidation, stale-if-error, retries, timeouts and the overall deadline.
-- That the preview UI (`app.js`) lists exactly the server's slides and themes.
+- Shared helpers: XML escaping, width-aware truncation/wrapping, number formatting and size formatting.
 
 Manual smoke test:
 
 ```bash
 npm run dev:mock
-curl "http://localhost:3000/api/card?user=octocat&slides=overview&_slide=0" -o card.svg
+curl "http://localhost:3000/api/card?user=octocat&slide=overview" -o card.svg
+curl "http://localhost:3000/api/catalog" | head -c 200
 test -s card.svg && echo "SVG generated"
 
 # Optional: validate Python script import health
 python -m py_compile "trigger action/trigger_action.py"
 ```
 
-When adding a slide: create `slides/<id>.js` exporting `{ id, label, needs, render }`, append it to `slides/index.js` **and** to `ALL_SLIDES` in `app.js` (same order), then run `npm test`.
+When adding a slide: create `slides/<id>.js` exporting `{ id, label, category, needs, render }`, append it **at the end** of `slides/index.js` (existing indices are part of the public API), then run `npm test`. Nothing else needs editing — the catalog, the preview UI, the parameter table and the tests pick it up automatically.
 
 ## Deployment
 
@@ -241,8 +303,8 @@ vercel --prod
 
 `vercel.json` already defines:
 
-- Function timeout for `api/card.js` (`maxDuration: 10`).
-- CORS headers for `/api/*` GET endpoints.
+- Function timeouts for `api/card.js` and `api/catalog.js` (`maxDuration: 10`).
+- CORS and `nosniff` headers for `/api/*` GET/HEAD endpoints.
 
 If Vercel import/deploy fails with a project-name validation error, set a lowercase slug explicitly, for example:
 
@@ -255,7 +317,7 @@ Vercel project slugs are safest in lowercase letters, numbers, and hyphens only.
 ### CI/CD Notes
 
 - `.github/workflows/lint.yml` runs `npm run lint` and `npm test` on every pull request.
-- `.github/workflows/ai-issue.yml` runs on pushes to `main` and selected PR events.
+- `.github/workflows/ai-issue.yml` installs Python dependencies from `requirements.txt` on pushes to `main` and selected PR events.
 - The workflow executes `trigger action/trigger_action.py` and relies on repo secrets for tokenized operations.
 
 ## Usage
@@ -266,8 +328,14 @@ Vercel project slugs are safest in lowercase letters, numbers, and hyphens only.
 # Minimal
 curl "https://your-domain.vercel.app/api/card?user=OstinUA"
 
-# Restrict to selected slides
+# Restrict the rotation to selected slides
 curl "https://your-domain.vercel.app/api/card?user=OstinUA&slides=repos,stars,commits"
+
+# Pin a single card (no rotation)
+curl "https://your-domain.vercel.app/api/card?user=OstinUA&slide=heatmap"
+
+# Change the rotation period to 5 minutes
+curl "https://your-domain.vercel.app/api/card?user=OstinUA&interval=5"
 
 # Force preview slide index (mostly for debugging/UI preview)
 curl "https://your-domain.vercel.app/api/card?user=OstinUA&slides=repos,stars&_slide=1"
@@ -275,8 +343,11 @@ curl "https://your-domain.vercel.app/api/card?user=OstinUA&slides=repos,stars&_s
 # Theme, and a second card that starts elsewhere in the rotation
 curl "https://your-domain.vercel.app/api/card?user=OstinUA&theme=tokyonight&badge=2"
 
-# Active hours / weekdays in your time zone (UTC+3)
+# Time-based charts in your time zone (UTC+3)
 curl "https://your-domain.vercel.app/api/card?user=OstinUA&slides=hours,weekdays&tz=3"
+
+# Discover all slides, categories and themes
+curl "https://your-domain.vercel.app/api/catalog"
 ```
 
 ### README Embeds
@@ -311,10 +382,12 @@ API query parameters:
 | Parameter | Required | Description |
 |---|---:|---|
 | `user` | Yes | GitHub username (a leading `@` is ignored). |
-| `slides` | No | Comma-separated slide IDs to include (see [Slides](#slides)). Unknown IDs are ignored. |
+| `slides` | No | Comma-separated slide IDs to include (see [Slides](#slides)). Unknown IDs are ignored; an empty list means all slides. |
+| `slide` | No | Pin one slide ID and disable rotation. Takes precedence over `slides` for non-preview requests. |
 | `theme` | No | Color theme (see [Themes](#themes)). Default `dark`. |
 | `badge` | No | `1`–`8`. Each badge starts at a different point of the rotation so several cards on one page don't repeat. Default `1`. |
-| `tz` | No | UTC offset in hours for `hours` / `weekdays`, e.g. `3`, `-5`, `5.5`. Default `0`. |
+| `interval` | No | Rotation period in minutes, `1`–`60`. Default `10`. Also determines the CDN cache lifetime. |
+| `tz` | No | UTC offset in hours for time-based activity slides, e.g. `3`, `-5`, `5.5`. Default `0`. |
 | `_slide` | No | Preview index override (debug/preview use). Disables caching and shows exact errors. |
 
 ## License
