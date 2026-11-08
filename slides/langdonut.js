@@ -17,13 +17,25 @@ module.exports = {
     if (rest) parts.push(['other', rest, c.mut]);
 
     const cx = 100; const cy = H / 2; const r = 60; const sw = 22;
-    const C = 2 * Math.PI * r;
-    let o = circle(cx, cy, r, 'none', `stroke="${esc(c.border)}" stroke-width="${sw}"`);
-    let off = 0;
-    parts.forEach(([, n, color]) => {
-      const len = (n / total) * C;
-      o += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${esc(color)}" stroke-width="${sw}" stroke-dasharray="${len.toFixed(2)} ${(C - len).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 ${cx} ${cy})"/>`;
-      off += len;
+    // Draw actual arcs rather than dashed circles: dash seams can produce
+    // notches/overlaps in SVG renderers, especially at the twelve-o'clock join.
+    const point = fraction => {
+      const angle = fraction * 2 * Math.PI - Math.PI / 2;
+      return `${(cx + r * Math.cos(angle)).toFixed(6)} ${(cy + r * Math.sin(angle)).toFixed(6)}`;
+    };
+    let o = '';
+    let count = 0;
+    parts.forEach(([, n, color], i) => {
+      if (n === total) {
+        o += circle(cx, cy, r, 'none', `stroke="${esc(color)}" stroke-width="${sw}"`);
+      } else {
+        const start = point(count / total);
+        // Close the last arc at exactly the same point as the first one.
+        const end = point(i === parts.length - 1 ? 0 : (count + n) / total);
+        const large = n > total / 2 ? 1 : 0;
+        o += `<path d="M ${start} A ${r} ${r} 0 ${large} 1 ${end}" fill="none" stroke="${esc(color)}" stroke-width="${sw}" stroke-linecap="butt"/>`;
+      }
+      count += n;
     });
     o += T(cx, cy + 6, String(langs.length), 26, c.text, 700, 'middle');
     o += T(cx, cy + 22, langs.length === 1 ? 'language' : 'languages', 10, c.sec, 400, 'middle');
