@@ -355,6 +355,36 @@
     $('param-summary').textContent = `${state.slides.length} slides · ${state.themes.length} themes · ${state.categories.length} categories`;
   }
 
+  // SVG category icons mapped by category identifier to enhance visual distinction
+  const CATEGORY_ICONS = {
+    profile: '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="currentColor"><path d="M10.561 8.073a6.005 6.005 0 0 1 3.432 5.142.75.75 0 1 1-1.498.07 4.5 4.5 0 0 0-8.99 0 .75.75 0 0 1-1.498-.07 6.004 6.004 0 0 1 3.431-5.142 3.999 3.999 0 1 1 5.123 0ZM10.5 5a2.5 2.5 0 1 0-5 0 2.5 2.5 0 0 0 5 0Z"/></svg>',
+    statistics: '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="currentColor"><path d="M1.5 1.75a.75.75 0 0 0-1.5 0v12.5c0 .414.336.75.75.75h14.5a.75.75 0 0 0 0-1.5H1.5V1.75Zm14.28 2.53a.75.75 0 0 0-1.06-1.06L10 7.94 7.53 5.47a.75.75 0 0 0-1.06 0L3.22 8.72a.75.75 0 0 0 1.06 1.06L6.5 7.56l2.47 2.47a.75.75 0 0 0 1.06 0l5.25-5.25a.75.75 0 0 0 0-.53Z"/></svg>',
+    repositories: '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="currentColor"><path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8V1.5Z"/></svg>',
+    languages: '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="currentColor"><path d="m11.28 3.22 4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.749.749 0 0 1-1.275-.326.749.749 0 0 1 .215-.734L13.94 8l-3.47-3.47a.75.75 0 0 1 1.06-1.06Zm-6.56 0a.75.75 0 0 1 1.06 1.06L2.31 8l3.47 3.47a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L.47 8.28a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Z"/></svg>',
+    activity: '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="currentColor"><path d="M1.5 8a.75.75 0 0 1 .75-.75h2.19l1.66-3.32a.75.75 0 0 1 1.34 0l2.31 4.62 1.66-1.66a.75.75 0 0 1 .53-.22H14.5a.75.75 0 0 1 0 1.5h-2.19l-2.19 2.19a.75.75 0 0 1-1.06 0L7.4 6.81l-1.84 3.68a.75.75 0 0 1-1.34 0L2.78 8.75H2.25A.75.75 0 0 1 1.5 8Z"/></svg>',
+    community: '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="currentColor"><path d="M2 5.5a3.5 3.5 0 1 1 5.898 2.549 5.508 5.508 0 0 1 3.034 4.084.75.75 0 1 1-1.482.235 4 4 0 0 0-7.9 0 .75.75 0 0 1-1.482-.236A5.507 5.507 0 0 1 3.102 8.05 3.493 3.493 0 0 1 2 5.5ZM11 4a3.001 3.001 0 0 1 2.22 5.018 5.01 5.01 0 0 1 2.56 3.66.75.75 0 0 1-1.492.155 3.51 3.51 0 0 0-2.825-2.81.75.75 0 0 1-.58-.75V9.12a1.5 1.5 0 0 0-.21-.762A3 3 0 0 1 11 4Z"/></svg>',
+  };
+  const DEFAULT_CATEGORY_ICON = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="currentColor"><path d="M1 2.75C1 1.784 1.784 1 2.75 1h10.5c.966 0 1.75.784 1.75 1.75v10.5A1.75 1.75 0 0 1 13.25 15H2.75A1.75 1.75 0 0 1 1 13.25V2.75Z"/></svg>';
+
+  // Constructs an accessible toggle switch for category headers matching the slide toggle design
+  function makeCategoryToggle(badge, category) {
+    const wrapper = document.createElement('label');
+    wrapper.className = 'toggle cat-toggle';
+    wrapper.title = `Toggle all ${category.label} slides for embed ${badge}`;
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.id = `cat-${category.id}-${badge}`;
+    input.dataset.categoryToggle = category.id;
+    input.dataset.badge = String(badge);
+    input.setAttribute('aria-label', wrapper.title);
+    const track = document.createElement('span');
+    track.className = 'toggle-track';
+    const thumb = document.createElement('span');
+    thumb.className = 'toggle-thumb';
+    wrapper.append(input, track, thumb);
+    return wrapper;
+  }
+
   function makeToggle(badge, id, label) {
     const wrapper = document.createElement('label');
     wrapper.className = 'toggle slide-toggle';
@@ -411,7 +441,8 @@
       const slides = state.slides.filter(s => s.category === category.id && matchesFilter(s, category, query));
       if (!slides.length) return;
       shown += slides.length;
-      const collapsed = state.collapsed.has(category.id);
+      // When actively searching, expand categories to reveal matching slides
+      const collapsed = query ? false : state.collapsed.has(category.id);
 
       const section = document.createElement('section');
       section.className = `cat${collapsed ? ' collapsed' : ''}`;
@@ -419,40 +450,50 @@
 
       const header = document.createElement('div');
       header.className = 'cat-header';
+      header.dataset.collapse = category.id;
+      header.setAttribute('role', 'button');
+      header.tabIndex = 0;
+      header.setAttribute('aria-expanded', String(!collapsed));
+      header.setAttribute('aria-label', `${collapsed ? 'Expand' : 'Collapse'} ${category.label}`);
+
       const chevron = document.createElement('button');
       chevron.type = 'button';
       chevron.className = 'cat-chevron';
-      chevron.textContent = '▾';
       chevron.dataset.collapse = category.id;
-      chevron.setAttribute('aria-expanded', String(!collapsed));
-      chevron.setAttribute('aria-label', `${collapsed ? 'Expand' : 'Collapse'} ${category.label}`);
+      chevron.setAttribute('aria-hidden', 'true');
+      chevron.tabIndex = -1;
+      chevron.innerHTML = '<svg class="cat-chevron-icon" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true" fill="currentColor"><path d="M12.78 5.22a.749.749 0 0 1 0 1.06l-4.25 4.25a.749.749 0 0 1-1.06 0L3.22 6.28a.749.749 0 1 1 1.06-1.06L8 8.94l3.72-3.72a.749.749 0 0 1 1.06 0Z"/></svg>';
 
-      const title = document.createElement('button');
-      title.type = 'button';
-      title.className = 'cat-name';
-      title.dataset.collapse = category.id;
-      title.title = category.hint;
+      const titleBlock = document.createElement('div');
+      titleBlock.className = 'cat-title-block';
+      titleBlock.dataset.collapse = category.id;
+
+      const topRow = document.createElement('div');
+      topRow.className = 'cat-top-row';
+
+      const icon = document.createElement('span');
+      icon.className = 'cat-icon';
+      icon.innerHTML = CATEGORY_ICONS[category.id] || DEFAULT_CATEGORY_ICON;
+
       const name = document.createElement('span');
+      name.className = 'cat-name';
       name.textContent = category.label;
+
       const count = document.createElement('span');
       count.className = 'cat-count';
       count.textContent = String(slides.length);
-      title.append(name, count);
+      count.title = `${slides.length} slides`;
 
-      header.append(chevron, title);
-      state.badges.forEach(b => {
-        const label = document.createElement('label');
-        label.className = 'cat-toggle';
-        const input = document.createElement('input');
-        input.type = 'checkbox';
-        input.dataset.categoryToggle = category.id;
-        input.dataset.badge = String(b);
-        const caption = `Toggle all ${category.label} slides for embed ${b}`;
-        input.title = caption;
-        input.setAttribute('aria-label', caption);
-        label.appendChild(input);
-        header.appendChild(label);
-      });
+      topRow.append(icon, name, count);
+
+      const hint = document.createElement('div');
+      hint.className = 'cat-hint';
+      hint.textContent = category.hint;
+
+      titleBlock.append(topRow, hint);
+
+      header.append(chevron, titleBlock);
+      state.badges.forEach(b => header.appendChild(makeCategoryToggle(b, category)));
 
       const body = document.createElement('div');
       body.className = 'cat-body';
@@ -465,6 +506,15 @@
 
     $('no-matches').hidden = shown > 0;
     $('filter-count').textContent = query ? `${shown} shown` : '';
+
+    const collapseBtn = $('toggle-collapse');
+    if (collapseBtn) {
+      const allCollapsed = state.categories.length > 0 && state.categories.every(c => state.collapsed.has(c.id));
+      collapseBtn.textContent = allCollapsed ? 'expand all' : 'collapse all';
+      collapseBtn.title = allCollapsed ? 'Expand all categories' : 'Collapse all categories';
+      collapseBtn.setAttribute('aria-label', collapseBtn.title);
+    }
+
     refreshCategoryCheckboxes();
     updateCount();
     if (state.previewId) setActiveRow(state.previewId);
@@ -625,6 +675,18 @@
     saveConfig();
   }
 
+  // Toggles all category accordion sections between expanded and collapsed states
+  function toggleAllCategories() {
+    const allCollapsed = state.categories.length > 0 && state.categories.every(c => state.collapsed.has(c.id));
+    if (allCollapsed) {
+      state.collapsed.clear();
+    } else {
+      state.categories.forEach(c => state.collapsed.add(c.id));
+    }
+    renderSlideList();
+    saveConfig();
+  }
+
   function resetAll() {
     try { localStorage.removeItem(STORAGE_KEY); } catch (_) { /* storage disabled */ }
     state.filter = '';
@@ -686,6 +748,10 @@
     $('copy-link').addEventListener('click', copySetupLink);
     $('select-all').addEventListener('click', () => setAll(true));
     $('select-none').addEventListener('click', () => setAll(false));
+    const toggleCollapseBtn = $('toggle-collapse');
+    if (toggleCollapseBtn) {
+      toggleCollapseBtn.addEventListener('click', toggleAllCategories);
+    }
     $('retry-catalog').addEventListener('click', boot);
 
     $('slide-filter').addEventListener('input', event => {
@@ -714,15 +780,27 @@
       }
     });
     groups.addEventListener('click', event => {
+      // Prevent collapse or preview activation when clicking any toggle switch
+      if (event.target.closest('.toggle')) return;
       const collapse = event.target.closest('[data-collapse]');
       if (collapse) { toggleCategory(collapse.dataset.collapse); return; }
       const row = event.target.closest('.slide-row');
-      if (row && !event.target.closest('.slide-toggle')) previewSlide(row.dataset.slide);
+      if (row) previewSlide(row.dataset.slide);
     });
     groups.addEventListener('keydown', event => {
-      if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('.slide-row')) {
-        event.preventDefault();
-        previewSlide(event.target.dataset.slide);
+      if (event.key === 'Enter' || event.key === ' ') {
+        if (event.target.closest('.toggle')) return;
+        const header = event.target.closest('.cat-header');
+        if (header) {
+          event.preventDefault();
+          toggleCategory(header.dataset.collapse);
+          return;
+        }
+        const row = event.target.closest('.slide-row');
+        if (row) {
+          event.preventDefault();
+          previewSlide(row.dataset.slide);
+        }
       }
     });
 

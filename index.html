@@ -124,6 +124,7 @@
         <div class="box-header">
           <span>Slides <span class="box-sub" id="enabled-count"></span></span>
           <div class="box-actions">
+            <button class="btn btn-default btn-sm" id="toggle-collapse" type="button" title="Collapse or expand all categories">collapse all</button>
             <button class="btn btn-default btn-sm" id="select-all" type="button" title="Enable every slide for both embeds">all</button>
             <button class="btn btn-default btn-sm" id="select-none" type="button" title="Disable every slide for both embeds">none</button>
           </div>
@@ -132,10 +133,10 @@
           <input class="gh-input" id="slide-filter" type="search" placeholder="Filter slides…" autocomplete="off" spellcheck="false" aria-label="Filter slides by name or id"/>
           <span class="hint" id="filter-count"></span>
         </div>
-        <div class="slide-col-header">
-          <span class="slide-col-spacer"></span>
-          <span class="slide-col-label">1</span>
-          <span class="slide-col-label">2</span>
+        <div class="slide-col-header" aria-label="Slide list column headers">
+          <span class="slide-col-title">Categories &amp; Slides</span>
+          <span class="slide-col-badge" title="Embed 1 (README Card 1)" aria-label="Embed 1">1</span>
+          <span class="slide-col-badge" title="Embed 2 (README Card 2)" aria-label="Embed 2">2</span>
         </div>
         <div id="slide-groups"><div class="boot-note" id="boot-note">Loading catalog…</div></div>
         <div class="empty-note" id="no-matches" hidden>No slides match this filter.</div>
