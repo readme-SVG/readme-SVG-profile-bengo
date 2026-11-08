@@ -183,3 +183,56 @@ test('tz parsing is clamped and tolerant', () => {
   assert.equal(handler.parseTz('abc'), 0);
   assert.equal(handler.parseTz(''), 0);
 });
+
+test('slide= pins one slide and caches it independently of the rotation', async () => {
+  const res = await call({ user: 'octocat', slide: 'langdonut', theme: 'nord' });
+  assert.match(res.body, /language breakdown/);
+  assert.doesNotMatch(res.body, /gh-card error/);
+  assert.match(res.headers['cache-control'], /s-maxage=300/);
+  const unknown = await call({ user: 'octocat', slide: 'not-a-slide', _slide: '0' });
+  assert.match(unknown.body, /public repositories/);
+});
+
+test('interval= changes the rotation period and the cache lifetime', async () => {
+  assert.equal(handler.parseInterval('1'), 1);
+  assert.equal(handler.parseInterval('30'), 30);
+  assert.equal(handler.parseInterval('99'), 60);
+  assert.equal(handler.parseInterval('0'), 10);
+  assert.equal(handler.parseInterval('abc'), 10);
+  assert.equal(handler.parseInterval(''), 10);
+
+  const res = await call({ user: 'octocat', slides: 'repos,stars', interval: '1' });
+  const match = res.headers['cache-control'].match(/s-maxage=(\d+)/);
+  assert.ok(match);
+  assert.ok(Number(match[1]) >= 1 && Number(match[1]) <= 60, res.headers['cache-control']);
+
+  const list = handler.enabledSlides('repos,stars');
+  const t = 1234 * 60 * 1000;
+  const first = handler.pickSlide(list, undefined, 1, t, 60000);
+  assert.equal(handler.pickSlide(list, undefined, 1, t + 30000, 60000), first);
+  assert.notEqual(handler.pickSlide(list, undefined, 1, t + 60000, 60000), first);
+});
+
+test('a failed repos request degrades gracefully for the commits slide', async () => {
+  const res = await call({ user: 'octocat', slides: 'commits', _slide: '0' }, {
+    '/users/octocat/repos': rateLimited,
+  });
+  assert.match(res.body, /commits: GitHub API rate limit exceeded/);
+  assert.doesNotMatch(res.body, /Cannot read properties/);
+});
+
+test('oversized slides parameters are bounded instead of rejected', async () => {
+  const res = await call({ user: 'octocat', slides: `repos,${'x'.repeat(5000)}`, _slide: '0' });
+  assert.match(res.body, /public repositories/);
+});
+
+test('extended error kinds produce actionable hints', async () => {
+  const cases = [
+    ['/users/octocat', () => fx.json({}, 403), /forbidden/],
+    ['/users/octocat', () => fx.json({}, 422), /rejected the query/],
+  ];
+  for (const [needle, impl, expected] of cases) {
+    const res = await call({ user: 'octocat', slides: 'repos' }, { [needle]: impl });
+    assert.match(res.body, expected);
+  }
+});

@@ -94,6 +94,7 @@ test('slide registry is consistent', () => {
   for (const s of SLIDES) {
     assert.match(s.id, /^[a-z]+$/, `id ${s.id}`);
     assert.equal(typeof s.label, 'string', `${s.id}.label`);
+    assert.match(s.category || '', /^[a-z]+$/, `${s.id}.category`);
     assert.equal(typeof s.render, 'function', `${s.id}.render`);
     assert.ok(Array.isArray(s.needs), `${s.id}.needs`);
     s.needs.forEach(n => assert.ok(RESOURCES.has(n), `${s.id} needs unknown resource ${n}`));
@@ -145,12 +146,73 @@ test('events slide describes pushes without commit lists (2025 Events API format
   assert.equal(legacy, 'pushed 2 commits');
 });
 
-test('the preview UI lists exactly the server slides and themes, in order', () => {
-  const src = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
-  const slidesBlock = src.slice(src.indexOf('const ALL_SLIDES'), src.indexOf('];', src.indexOf('const ALL_SLIDES')));
-  const uiSlides = [...slidesBlock.matchAll(/id:'([a-z]+)'/g)].map(m => m[1]);
-  assert.deepEqual(uiSlides, SLIDES.map(s => s.id));
-  const themesBlock = src.slice(src.indexOf('const THEMES'), src.indexOf('];', src.indexOf('const THEMES')));
-  const uiThemes = [...themesBlock.matchAll(/id:'([a-z_]+)'/g)].map(m => m[1]);
-  assert.deepEqual(uiThemes, Object.keys(THEMES));
+test('the catalog is the single source of truth for slides, themes and categories', () => {
+  const { buildCatalog, validateCatalog, CATEGORIES } = require('../lib/catalog');
+  const catalog = buildCatalog();
+  assert.deepEqual(validateCatalog(catalog), []);
+  assert.deepEqual(catalog.slides.map(s => s.id), SLIDES.map(s => s.id));
+  assert.deepEqual(catalog.slides.map(s => s.label), SLIDES.map(s => s.label));
+  assert.deepEqual(catalog.slides.map(s => s.category), SLIDES.map(s => s.category));
+  assert.deepEqual(catalog.slides.map(s => s.index), SLIDES.map((_, i) => i));
+  assert.deepEqual(catalog.themes.map(t => t.id), Object.keys(THEMES));
+  assert.deepEqual(catalog.categories.map(c => c.id), CATEGORIES.map(c => c.id));
+  for (const slide of catalog.slides) {
+    assert.ok(CATEGORIES.some(c => c.id === slide.category), `${slide.id} has a declared category`);
+    assert.ok(!('isNew' in slide), `${slide.id} has no stale isNew flag`);
+    assert.ok(Array.isArray(slide.needs));
+  }
+  assert.ok(catalog.slides.length >= 40, 'additional slide variants are registered');
+  assert.ok(catalog.themes.length >= 15, 'additional theme variants are registered');
+  assert.equal(catalog.rotation.defaultMs, catalog.rotation.defaultMinutes * 60000);
+});
+
+test('validateCatalog detects a malformed registry', () => {
+  const { buildCatalog, validateCatalog } = require('../lib/catalog');
+  const broken = buildCatalog();
+  broken.slides = broken.slides.slice(1);
+  broken.slides[0].category = 'nonexistent';
+  broken.themes = broken.themes.slice(1);
+  const problems = validateCatalog(broken);
+  assert.ok(problems.some(p => /unknown category/.test(p)));
+  assert.ok(problems.some(p => /catalog slides do not match/.test(p)));
+  assert.ok(problems.some(p => /catalog themes do not match/.test(p)));
+});
+
+test('the UI is catalog-driven and carries no stale "new" badges', () => {
+  const app = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+  const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  const css = fs.readFileSync(path.join(__dirname, '..', 'styles.css'), 'utf8');
+  assert.match(app, /\/api\/catalog/);
+  assert.doesNotMatch(app, /const ALL_SLIDES\s*=\s*\[/);
+  assert.doesNotMatch(app, /const THEMES\s*=\s*\[/);
+  assert.doesNotMatch(html, /onclick=/);
+  for (const [name, source] of [['app.js', app], ['index.html', html], ['styles.css', css]]) {
+    assert.doesNotMatch(source, /new-tag|isNew|>\s*new\s*</, `${name} still renders a "new" badge`);
+  }
+});
+
+test('additional slide variants are registered and degrade safely without data', () => {
+  const added = [
+    'milestones', 'quote', 'followratio', 'biggest', 'oldest', 'licenses',
+    'langtop', 'streak', 'heatmap', 'breakdown', 'issuerate', 'prmerge',
+  ];
+  for (const id of added) {
+    const slide = SLIDES.find(s => s.id === id);
+    assert.ok(slide, `${id} is registered`);
+    assert.equal(typeof slide.category, 'string', `${id}.category`);
+    assert.doesNotThrow(() => {
+      assertWellFormedSvg(slide.render({ ...DATASETS.empty, c: THEMES.dark, tz: 0 }));
+    }, id);
+  }
+});
+
+test('barRows clamps hostile values and emits well-formed geometry', () => {
+  const { barRows } = require('../slides/common');
+  const out = barRows(THEMES.dark, [
+    { label: 'broken', value: Infinity, color: '#ffffff' },
+    { label: 'negative', value: -5, color: '#ffffff' },
+    { label: null, value: 'not-a-number', color: '#ffffff' },
+  ]);
+  assert.ok(!/NaN|Infinity|undefined/.test(out));
+  assertWellFormedSvg(`<svg xmlns="http://www.w3.org/2000/svg">${out}</svg>`);
 });

@@ -6,6 +6,7 @@ const { emptyState, langCounts } = require('./common');
 module.exports = {
   id: 'langdonut',
   label: 'language donut',
+  category: 'languages',
   needs: ['repos'],
   render: ({ repos, c }) => {
     const langs = langCounts(repos);

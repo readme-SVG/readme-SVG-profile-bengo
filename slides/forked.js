@@ -5,6 +5,7 @@ const { emptyState, repoRows } = require('./common');
 module.exports = {
   id: 'forked',
   label: 'most forked',
+  category: 'repositories',
   needs: ['repos'],
   render: ({ repos, c }) => {
     const top = repos.filter(r => !r.fork).sort((a, b) => b.forks_count - a.forks_count).slice(0, 3);

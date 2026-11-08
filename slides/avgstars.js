@@ -4,6 +4,7 @@ const { sumBy } = require('./common');
 module.exports = {
   id: 'avgstars',
   label: 'avg stars',
+  category: 'statistics',
   needs: ['repos'],
   render: ({ repos, c }) => {
     const own = repos.filter(r => !r.fork);

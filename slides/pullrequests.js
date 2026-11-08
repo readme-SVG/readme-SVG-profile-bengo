@@ -11,6 +11,7 @@ function state(pr, c) {
 module.exports = {
   id: 'pullrequests',
   label: 'pull requests',
+  category: 'community',
   needs: ['prs'],
   render: ({ prs, c }) => {
     const list = prs.slice(0, 3);

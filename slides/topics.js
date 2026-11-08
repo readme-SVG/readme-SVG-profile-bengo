@@ -6,6 +6,7 @@ const { emptyState } = require('./common');
 module.exports = {
   id: 'topics',
   label: 'top topics',
+  category: 'languages',
   needs: ['repos'],
   render: ({ repos, c }) => {
     const own = repos.filter(r => !r.fork);

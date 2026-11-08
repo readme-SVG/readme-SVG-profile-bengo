@@ -6,6 +6,7 @@ const { emptyState, langCounts } = require('./common');
 module.exports = {
   id: 'langbar',
   label: 'language bar',
+  category: 'languages',
   needs: ['repos'],
   render: ({ repos, c }) => {
     const langs = langCounts(repos).slice(0, 6);

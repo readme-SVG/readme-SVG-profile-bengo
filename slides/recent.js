@@ -5,6 +5,7 @@ const { emptyState, repoRows } = require('./common');
 module.exports = {
   id: 'recent',
   label: 'recently pushed',
+  category: 'repositories',
   needs: ['repos'],
   render: ({ repos, c }) => {
     const time = r => new Date(r.pushed_at).getTime() || 0;

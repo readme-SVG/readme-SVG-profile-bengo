@@ -5,6 +5,7 @@ const { emptyState, issueRows } = require('./common');
 module.exports = {
   id: 'latestissues',
   label: 'latest issues',
+  category: 'community',
   needs: ['openIssues'],
   render: ({ issues, c }) => {
     const list = issues.open.slice(0, 3);

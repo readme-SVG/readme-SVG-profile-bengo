@@ -5,6 +5,7 @@ const { emptyState, repoRows } = require('./common');
 module.exports = {
   id: 'toprepos',
   label: 'top repos',
+  category: 'repositories',
   needs: ['repos'],
   render: ({ repos, c }) => {
     const top = [...repos].sort((a, b) => b.stargazers_count - a.stargazers_count).slice(0, 3);
